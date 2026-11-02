@@ -24,7 +24,7 @@ GIBS dates are UTC calendar days. The default is yesterday, because today's comp
 ## Lazy loading and limits
 
 - **Viewport only:** tiles come from the globe's real camera-frustum bounds (`visibleGlobeBounds`), nearest the view centre first. There is no prefetch ring. A 500 ms debounce means a drag does not fire a burst of requests.
-- **Tile zoom:** z 2–4 to match the globe's 0.65–1.8× camera zoom, capped per provider. Requests are capped at **48 tiles per view** and **64 meshes** on the globe.
+- **Tile zoom:** derived from the globe camera's approximate conventional map zoom. The Atlas reference view at map z5.03 selects about tile z5; requests remain capped at provider limits and the loader's absolute z8 ceiling. Requests are capped at **48 tiles per view** and **64 meshes** on the globe.
 - **Size/time/shape:** each tile is at most 2 MiB, with a 10 s timeout. Accepted types are `image/png`, `image/jpeg` and `image/webp`. Requests use `redirect: "error"` and `credentials: "omit"`. URLs must match a per-provider allowlist (GIBS WMTS path, terrarium path, the origin of the validated OSM template, or the fixed relay path).
 - **Rate:** GIBS and terrain are capped at 240 tiles/min with 4 in parallel. OSM is capped at 60 tiles/min with **2 in parallel**, per the OSMF policy. Throttled tiles are counted and shown, never retried in a loop.
 - **Cache:** in-memory LRU, 128 imagery and 96 terrain tiles, dropped when the opt-in is turned off. There is no persistent or offline cache and no redistribution.
@@ -81,7 +81,7 @@ Google's [Map Tiles API attribution policy](https://developers.google.com/maps/d
 
 ## Limits and honesty notes
 
-- The globe zoom is coarse (tile z ≤ 4 on screen). This is context imagery, not a high-resolution or navigation map.
+- The Atlas reference view uses about tile z5. Imagery remains context only, not a high-resolution local survey or navigation map; provider coverage, date and resolution vary by location.
 - Without WebGL, the 2D SVG fallback keeps the schematic outlines and the credit line, and says that provider tiles are not drawn.
 - No visual check was run in a real WebGL browser while building this. Geometry, winding, mercator placement, mesh bounds and disposal are covered by Node tests, and live endpoint responses were checked with Node/curl.
 - Esri and Google relays were not exercised with real keys.

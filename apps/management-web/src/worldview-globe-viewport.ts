@@ -111,7 +111,7 @@ export function visibleOrthographicBounds(
   marginDegrees = 1.5,
 ): GlobeBounds[] {
   if (!Number.isFinite(center.lat) || !Number.isFinite(center.lon) || Math.abs(center.lat) > 89 || Math.abs(center.lon) > 180 ||
-      !Number.isFinite(zoom) || zoom < 0.65 || zoom > 1.8 || !Number.isInteger(samples) || samples < 2 || samples > 64 ||
+      !Number.isFinite(zoom) || zoom < 0.65 || zoom > 2.8 || !Number.isInteger(samples) || samples < 2 || samples > 64 ||
       !Number.isFinite(marginDegrees) || marginDegrees < 0 || marginDegrees > 5) return [];
   const half = 1.15 / zoom;
   const c = (center.lat * Math.PI) / 180;

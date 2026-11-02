@@ -51,6 +51,9 @@ test("orthographic fallback reports only the visible disk and splits the date li
   assert.equal(local.length, 1);
   assert.ok(local[0].west < -77 && local[0].east > -77);
   assert.ok(local[0].south < 38 && local[0].north > 38);
+  const atlas = visibleOrthographicBounds({ lat: 30.83857, lon: -83.26409 }, 2.66);
+  assert.equal(atlas.length, 1);
+  assert.ok(atlas[0].east - atlas[0].west < local[0].east - local[0].west);
   const dateLine = visibleOrthographicBounds({ lat: 0, lon: 179 }, 1);
   assert.equal(dateLine.length, 2);
   assert.equal(dateLine[0].east, 180);

@@ -34,8 +34,10 @@ test('offline, error and refresh never claim a verified retained snapshot', () =
 })
 test('display brand is consistent while package identity is unchanged', () => {
   const main = readFileSync(resolve(here, '../src/main.tsx'), 'utf8')
-  assert.match(main, /<strong>SignalWarden AI<\/strong>/)
+  assert.match(main, /<strong>SignalWarden Atlas<\/strong>/)
   assert.match(main, /id: 'ai' as Page/)
-  assert.match(readFileSync(resolve(here, '../index.html'), 'utf8'), /<title>SignalWarden AI/)
+  assert.match(readFileSync(resolve(here, '../index.html'), 'utf8'), /<title>SignalWarden Atlas/)
+  assert.match(readFileSync(resolve(here, '../src/WorkspaceWelcome.tsx'), 'utf8'), /<h1 id="sw-title">SignalWarden Atlas<\/h1>/)
+  assert.match(readFileSync(resolve(here, '../src/LocalAIWorkbench.tsx'), 'utf8'), /SignalWarden Atlas \/ operator setup/)
   assert.equal(JSON.parse(readFileSync(resolve(here, '../package.json'), 'utf8')).name, 'ucas-management-ui')
 })

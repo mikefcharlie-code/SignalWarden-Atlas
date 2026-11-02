@@ -37,6 +37,7 @@ type Props = Readonly<{
   bounds: readonly GlobeBounds[];
   center: Readonly<{ lat: number; lon: number }>;
   zoom: number;
+  initialChoice?: "" | BasemapProviderId;
   onBasemap: (basemap: GlobeBasemap | null) => void;
 }>;
 type Choice = "" | BasemapProviderId;
@@ -61,9 +62,9 @@ const decodeTerrain = async (blob: Blob): Promise<ElevationGrid> => {
 const noop = () => {};
 const IMAGERY_ORDER: BasemapProviderId[] = ["gibs-viirs-truecolor", "gibs-modis-terra-truecolor", "gibs-viirs-dnb", "gibs-black-marble", "gibs-modis-lst-day", "osm-standard", "esri-world-imagery", "google-2d-satellite"];
 
-export default function WorldViewBasemap(props: Props = { active: true, bounds: [], center: { lat: 0, lon: 0 }, zoom: 1, onBasemap: noop }) {
+export default function WorldViewBasemap(props: Props = { active: true, bounds: [], center: { lat: 0, lon: 0 }, zoom: 1, initialChoice: "gibs-viirs-truecolor", onBasemap: noop }) {
   const [network, setNetwork] = useState(false);
-  const [choice, setChoice] = useState<Choice>("");
+  const [choice, setChoice] = useState<Choice>(props.initialChoice ?? "gibs-viirs-truecolor");
   const [date, setDate] = useState(() => defaultGibsDate());
   const [templateDraft, setTemplateDraft] = useState(DEFAULT_OSM_TEMPLATE);
   const [template, setTemplate] = useState(DEFAULT_OSM_TEMPLATE);
@@ -218,7 +219,7 @@ export default function WorldViewBasemap(props: Props = { active: true, bounds: 
 
   return <section className="wv-basemap" aria-label="Imagery, basemaps and terrain">
     <h2><small>LIVE PROVIDER LAYERS · READ-ONLY · OPT-IN</small>Imagery, basemaps & terrain</h2>
-    <p>The original schematic globe stays the default and offline fallback. Layers below are fetched lazily for the visible viewport only (≤48 tiles per view, ≤2 MiB per tile, rate-limited). Eligible public sources use a bounded in-memory cache; keyed Esri/Google tiles and relay metadata use no-store and bypass the tile cache. Provider credit stays visible on the globe while a layer is enabled. Keys for Esri and Google live only on the server relay.</p>
+    <p>The NASA GIBS daily VIIRS true-color satellite layer is preselected to match the Atlas view, but the schematic globe remains the offline default. No tiles are requested until you enable this panel's network opt-in. Requests are limited to the visible viewport (≤48 tiles per view, ≤2 MiB per tile, rate-limited); provider credit stays visible while a layer is enabled. Keyed Esri/Google tiles require the local server relay, and keys remain server-side.</p>
     <label className="basemap-opt-in"><input type="checkbox" checked={network} onChange={(e) => setNetwork(e.target.checked)} /> Allow tile requests to the selected providers (NASA GIBS, AWS Terrain Tiles, OpenStreetMap tile server, or the local keyed-provider relay)</label>
     {!props.active && <p role="status" className="basemap-warning">Globe is not visible. Public imagery/tile requests are paused until it is open and visible.</p>}
     <div className="basemap-controls">

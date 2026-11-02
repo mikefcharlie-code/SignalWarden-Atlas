@@ -36,8 +36,10 @@ test("Web Mercator tile math matches known tiles", () => {
   assert.equal(b.west, -180); assert.equal(b.east, 0); assert.equal(b.south, 0);
   assert.ok(Math.abs(b.north - bm.MAX_MERCATOR_LAT) < 1e-9);
   assert.equal(bm.chooseTileZoom(0.65, 9), 2);
-  assert.equal(bm.chooseTileZoom(1.8, 9), 4);
+  assert.equal(bm.chooseTileZoom(1.8, 9), 3);
   assert.equal(bm.chooseTileZoom(1.8, 3), 3);
+  assert.equal(bm.chooseTileZoom(2.66, 9), 5, "reference map zoom 5.03 selects level-5 imagery");
+  assert.equal(bm.chooseTileZoom(2.8, 3), 3, "provider maximum remains authoritative");
 });
 
 test("visible tiles are bounded, deduplicated, centre-first and never outside the viewport", () => {

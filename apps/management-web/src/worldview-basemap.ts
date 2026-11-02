@@ -163,9 +163,18 @@ export function tileBounds(t: TileCoord): GlobeBounds {
   return { west: (t.x / n) * 360 - 180, east: ((t.x + 1) / n) * 360 - 180, north: tileYToLat(t.y, t.z), south: tileYToLat(t.y + 1, t.z) };
 }
 
-/** Tile zoom for the globe's 0.65-1.8 camera zoom, capped by the provider. */
+/** Approximate conventional map zoom implied by the current 38°-FOV globe camera. */
+function mapZoomForGlobeScale(globeZoom: number): number {
+  const scale = Math.max(0.65, Math.min(2.8, globeZoom));
+  const cameraDistance = 3.4 / scale;
+  const halfSpan = Math.atan(Math.tan((38 / 2) * Math.PI / 180) * Math.max(0, cameraDistance - 1));
+  const fullSpanDegrees = Math.max(1e-9, 2 * halfSpan * 180 / Math.PI);
+  return Math.log2(360 / fullSpanDegrees);
+}
+
+/** Tile zoom for the bounded globe camera, capped by the provider. */
 export function chooseTileZoom(globeZoom: number, providerMax: number): number {
-  const z = !Number.isFinite(globeZoom) ? 2 : globeZoom >= 1.5 ? 4 : globeZoom >= 1.05 ? 3 : 2;
+  const z = !Number.isFinite(globeZoom) ? 2 : Math.round(mapZoomForGlobeScale(globeZoom));
   return Math.max(0, Math.min(providerMax, z));
 }
 

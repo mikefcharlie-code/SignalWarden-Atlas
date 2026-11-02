@@ -11,6 +11,7 @@ import type { GlobeImageryLayer, GlobeImageryStatus } from "./worldview-globe-im
 import { maskSurfaceToRing, splitPathAtAntimeridian, type LonLat } from "./worldview-draped-raster";
 import type { ImageryAoi } from "./worldview-imagery-aoi";
 import type { GlobeBasemap } from "./worldview-basemap";
+import { GLOBE_SCALE_MAX, GLOBE_SCALE_MIN } from "./worldview-atlas";
 import { createBasemapGlobeLayer, WorldGlobeBasemapCredits } from "./worldview-basemap-globe";
 import { createOceanGlobeLayer, OceanGlobeCredits, type OceanGlobeOverlay } from "./worldview-ocean-globe";
 import { createWindAirGlobeLayer, WindAirGlobeCredits, type WindAirGlobeState } from "./worldview-windair-globe";
@@ -436,7 +437,7 @@ export function WorldGlobe(props: Props) {
         (p.imageryAois ?? []).forEach((aoi) => drawRing(aoi.ring, aoi.id === p.selectedImageryAoiId ? 0xffcc64 : 0x58b9a8));
         if (p.aoiDraft?.length) drawRing(p.aoiDraft, 0xffe29b, true);
       }
-      const distance = 3.4 / Math.max(0.65, Math.min(1.8, p.zoom));
+      const distance = 3.4 / Math.max(GLOBE_SCALE_MIN, Math.min(GLOBE_SCALE_MAX, p.zoom));
       camera.position.set(...globeVector(p.center.lat, p.center.lon, distance));
       if (p.tilt) {
         const north = new THREE.Vector3(

@@ -43,6 +43,19 @@ import type { WindAirGlobeState } from "./worldview-windair-globe";
 import type { LiveOverlay, LiveFeedInput } from "./worldview-livemaps";
 import type { GpsJamGlobeState } from "./worldview-gpsjam";
 import "./worldview-provider-layout.css";
+import { WorldViewAtlasControls } from "./WorldViewAtlasControls";
+import {
+  ATLAS_MAP_ZOOM_MAX,
+  ATLAS_MAP_ZOOM_MIN,
+  GLOBE_SCALE_MAX,
+  GLOBE_SCALE_MIN,
+  globeScaleToMapZoom,
+  isAtlasSignalVisible,
+  mapZoomToGlobeScale,
+  resolveAtlasInitialView,
+  type AtlasSignalKey,
+  type AtlasSignalFilters,
+} from "./worldview-atlas";
 
 const WorldViewSar = lazy(() => import("./WorldViewSarSources"));
 const WorldViewBasemap = lazy(() => import("./WorldViewBasemap"));
@@ -112,6 +125,7 @@ const download = (name: string, body: string, type = "application/json") => {
 };
 
 export function WorldView(props: Props) {
+  const [initialAtlasView] = useState(() => resolveAtlasInitialView(typeof window === "undefined" ? "" : window.location.search));
   const [localLayersOpen, setLocalLayersOpen] = useState(false);
   const [sarOpen, setSarOpen] = useState(false);
   const [aisOpen, setAisOpen] = useState(false);
@@ -144,7 +158,7 @@ export function WorldView(props: Props) {
     props.records?.length ? props.records : createDemoObservations(),
   );
   const [center, setCenter] = useState<Center>(
-    props.center ?? { lat: 38.9072, lon: -77.0369 },
+    props.center ?? initialAtlasView.center,
   );
   const [selectedId, setSelectedId] = useState<string | null>(
     props.selectedId ?? null,
@@ -152,7 +166,8 @@ export function WorldView(props: Props) {
   const [style, setStyle] = useState(props.style ?? "Standard"),
     [detection, setDetection] = useState(props.detection ?? false),
     [tilt, setTilt] = useState(props.tilt ?? false),
-    [zoom, setZoom] = useState(Math.max(0.65, Math.min(1.8, props.zoom ?? 1)));
+    [zoom, setZoom] = useState(Math.max(GLOBE_SCALE_MIN, Math.min(GLOBE_SCALE_MAX, props.zoom ?? initialAtlasView.globeScale)));
+  const [signalFilters, setSignalFilters] = useState<AtlasSignalFilters>(initialAtlasView.signalFilters);
   const [query, setQuery] = useState(""),
     [command, setCommand] = useState(""),
     [notice, setNotice] = useState("");
@@ -317,8 +332,8 @@ export function WorldView(props: Props) {
     [shownRecords, clock],
   );
   const activeRows = useMemo(
-    () => rows.filter((r) => layers[r.kind] !== false),
-    [rows, layers],
+    () => rows.filter((r) => layers[r.kind] !== false && isAtlasSignalVisible(r.kind, r.id, signalFilters)),
+    [rows, layers, signalFilters],
   );
   const filtered = useMemo(() => {
     const q = query.trim();
@@ -345,6 +360,21 @@ export function WorldView(props: Props) {
     setSelectedId(id);
     props.onSelect?.(id);
   };
+  const toggleAtlasSignal = (key: AtlasSignalKey, enabled: boolean) => {
+    const next = { ...signalFilters, [key]: enabled };
+    setSignalFilters(next);
+    if (key === "planes") setLayers((previous) => ({ ...previous, aircraft: enabled }));
+    if (key === "staticcams" || key === "livecams") setLayers((previous) => ({ ...previous, cameras: next.staticcams || next.livecams }));
+    if (key === "ais") {
+      setLayers((previous) => ({ ...previous, vessels: enabled }));
+      if (enabled) { setProviderDockOpen(true); setAisOpen(true); }
+    }
+    if (key === "road-incidents") {
+      setLayers((previous) => ({ ...previous, traffic: enabled }));
+      if (enabled) { setProviderDockOpen(true); setPublicTrafficOpen(true); }
+    }
+    if (key === "livecams" && enabled) { setProviderDockOpen(true); setPublicTrafficOpen(true); }
+  };
   useEffect(() => {
     if ((!playing && !replaying) || paused) return;
     const started = Date.now() - timeMs;
@@ -358,7 +388,7 @@ export function WorldView(props: Props) {
         const pose = directorAt(keyframes, elapsed);
         if (pose) {
           syncCenter(pose.center);
-          setZoom(Math.max(0.65, Math.min(1.8, pose.zoom)));
+          setZoom(Math.max(GLOBE_SCALE_MIN, Math.min(GLOBE_SCALE_MAX, pose.zoom)));
         }
       }
     }, 100);
@@ -378,7 +408,7 @@ export function WorldView(props: Props) {
     try {
       const s = decodeScene(raw);
       syncCenter(s.center);
-      setZoom(Math.max(0.65, Math.min(1.8, s.zoom)));
+      setZoom(Math.max(GLOBE_SCALE_MIN, Math.min(GLOBE_SCALE_MAX, s.zoom)));
       setStyle(s.style === "standard" ? "Standard" : (s.style ?? "Standard"));
       setDetection(!!s.detection);
       setTilt(!!s.tilt);
@@ -550,7 +580,7 @@ export function WorldView(props: Props) {
         } else {
           const s = decodeScene(encodeURIComponent(text));
           syncCenter(s.center);
-          setZoom(Math.max(0.65, Math.min(1.8, s.zoom)));
+          setZoom(Math.max(GLOBE_SCALE_MIN, Math.min(GLOBE_SCALE_MAX, s.zoom)));
           setLayers(
             Object.fromEntries(
               LAYER_IDS.map((id) => [
@@ -805,11 +835,11 @@ export function WorldView(props: Props) {
     <main className={`worldview style-${style.toLowerCase()}`}>
       <header className="wv-header">
         <div>
-          <span className="wv-kicker">WORLD / READ-ONLY CONTEXT</span>
-          <h1>
-            WorldView <span>signal workspace</span>
-          </h1>
-          <p>Procedural globe · explicit viewport-only imagery opt-in · no identity tracking</p>
+            <span className="wv-kicker">ATLAS / READ-ONLY CONTEXT</span>
+            <h1>
+            SignalWarden Atlas <span>public-context map</span>
+            </h1>
+          <p>Original globe renderer · explicit source opt-in · provenance and freshness stay visible</p>
         </div>
         <div className="wv-header-actions">
           <span className="wv-badge">
@@ -846,11 +876,15 @@ export function WorldView(props: Props) {
         </div>
       </header>
       <div className="wv-safety">
-        <b>BOUNDARY</b> Camera / ALPR locations only. No face or plate
-        recognition, covert targeting, or actuation. Every synthetic record is
-        labeled <strong>SYNTHETIC</strong>; provider snapshots retain status and
-        attribution.
+        <b>BOUNDARY</b> Simulation-first context only — not flight-ready or a navigation display. No weapon/effector controls, targeting, arming, or AI-to-command path. Synthetic records remain labeled; provider data retains source, attribution, and freshness.
       </div>
+      <WorldViewAtlasControls
+        center={center}
+        mapZoom={globeScaleToMapZoom(zoom)}
+        filters={signalFilters}
+        onToggle={toggleAtlasSignal}
+        onOpenSatellite={() => { setProviderDockOpen(true); setBasemapOpen(true); }}
+      />
       <section className="wv-command">
         <span className="prompt">›</span>
         <input
@@ -970,8 +1004,8 @@ export function WorldView(props: Props) {
               <button
                 className="reset"
                 onClick={() => {
-                  syncCenter({ lat: 0, lon: 0 });
-                  setZoom(1);
+                  syncCenter(initialAtlasView.center);
+                  setZoom(initialAtlasView.globeScale);
                   setStyle("Standard");
                   setTilt(false);
                   setTracking(false);
@@ -999,16 +1033,17 @@ export function WorldView(props: Props) {
               <span>Zoom</span>
               <input
                 type="range"
-                min=".65"
-                max="1.8"
+                min={ATLAS_MAP_ZOOM_MIN}
+                max={ATLAS_MAP_ZOOM_MAX}
                 step=".05"
-                value={zoom}
+                value={globeScaleToMapZoom(zoom)}
                 onChange={(e) => {
-                  setZoom(Number(e.target.value));
-                  props.onZoomChange?.(Number(e.target.value));
+                  const next = mapZoomToGlobeScale(Number(e.target.value));
+                  setZoom(next);
+                  props.onZoomChange?.(next);
                 }}
               />
-              <b>{zoom.toFixed(2)}×</b>
+              <b>z {globeScaleToMapZoom(zoom).toFixed(2)}</b>
             </div>
             <label className="toggle-row">
               <span>Oblique view (WebGL)</span>
@@ -1040,7 +1075,7 @@ export function WorldView(props: Props) {
       </button>
               {sarEverOpened && <Suspense fallback={<p role="status">Loading SAR panel code (no provider requests)…</p>}><div hidden={!sarOpen}><WorldViewSar autoRefresh={sarAutoRefresh} onAutoRefreshChange={setAutoImageryPermission} bounds={viewportBounds} globeActive={globeActive} panelVisible={sarOpen} resetKey={sarResetKey} onLayer={receiveImageryLayer} onStatus={receiveImageryStatus} /></div></Suspense>}
               <button className="wv-sar-toggle" aria-expanded={basemapOpen} onClick={() => setBasemapOpen((open) => { if (open) setBasemap(null); return !open; })}>{basemapOpen ? "Close basemaps and terrain" : "Open imagery, basemaps and terrain"}</button>
-              {basemapOpen && <Suspense fallback={<p role="status">Loading basemap controls (no provider requests)…</p>}><WorldViewBasemap active={globeActive} bounds={viewportBounds} center={center} zoom={zoom} onBasemap={setBasemap} /></Suspense>}
+              {basemapOpen && <Suspense fallback={<p role="status">Loading basemap controls (no provider requests)…</p>}><WorldViewBasemap active={globeActive} bounds={viewportBounds} center={center} zoom={zoom} initialChoice={initialAtlasView.basemap === "satellite" ? "gibs-viirs-truecolor" : initialAtlasView.basemap === "streets" ? "osm-standard" : ""} onBasemap={setBasemap} /></Suspense>}
               <button className="wv-sar-toggle" aria-expanded={oceanOpen} onClick={() => setOceanOpen((open) => { if (open) setOceanOverlay(null); return !open; })}>{oceanOpen ? "Close ocean maps & data" : "Open ocean maps & marine data"}</button>
               {oceanOpen && <Suspense fallback={<p role="status">Loading ocean controls (no provider requests)…</p>}><WorldViewOcean active={globeActive} bounds={viewportBounds} center={center} zoom={zoom} onOverlay={setOceanOverlay} onObservations={receiveAis} /></Suspense>}
               <button className="wv-sar-toggle" aria-expanded={windAirOpen} onClick={() => setWindAirOpen((open) => { if (open) setWindAirLayer(null); return !open; })}>{windAirOpen ? "Close wind & air-quality maps" : "Open wind & air-quality maps"}</button>
@@ -1110,16 +1145,16 @@ export function WorldView(props: Props) {
               <span>
                 LAT {fmt(center.lat)}° · LON {fmt(center.lon)}°
               </span>
-              <span>ZOOM {zoom.toFixed(2)}X</span>
+              <span>MAP Z {globeScaleToMapZoom(zoom).toFixed(2)} · GLOBE ×{zoom.toFixed(2)}</span>
             </div>
             <div className="stage-controls">
-              <button onClick={() => setZoom(Math.min(1.8, zoom + 0.05))}>
+              <button aria-label="Zoom in" onClick={() => setZoom(Math.min(GLOBE_SCALE_MAX, zoom + 0.05))}>
                 +
               </button>
-              <button onClick={() => setZoom(Math.max(0.65, zoom - 0.05))}>
+              <button aria-label="Zoom out" onClick={() => setZoom(Math.max(GLOBE_SCALE_MIN, zoom - 0.05))}>
                 −
               </button>
-              <button onClick={() => syncCenter({ lat: 0, lon: 0 })}>◎</button>
+              <button aria-label="Return to initial map view" onClick={() => { syncCenter(initialAtlasView.center); setZoom(initialAtlasView.globeScale); }}>◎</button>
             </div>
             <div className="synthetic-stamp">
               {replaying ? "SYNTHETIC REPLAY · " : ""}

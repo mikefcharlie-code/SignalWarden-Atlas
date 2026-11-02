@@ -1,10 +1,12 @@
-# World View in SignalWarden AI
+# Atlas map in SignalWarden
 
-Open **World View** in the navigation, or visit `/worldview` in the local management UI. This is a read-only situational-awareness workspace, not an aircraft controller or an operational navigation map. The existing PX4 and ArduPilot telemetry support is unchanged.
+Open **Atlas** in the navigation, or visit `/worldview` in the local management UI. This is a read-only public-context workspace, not an aircraft controller or an operational navigation map. The existing PX4 and ArduPilot telemetry support is unchanged.
 
 ## Start offline
 
 The initial scene contains original, clearly labeled synthetic examples across aircraft, vessels, satellites, earthquakes, fires, weather, aggregate traffic, public-camera locations and ALPR locations. No third-party imagery, models, camera catalog, plate records or event dataset is bundled. If WebGL is unavailable, the workspace uses an interactive SVG orthographic globe; real 3D glyphs and oblique camera perspective require WebGL.
+
+This fork opens at **30.83857, -83.26409** with reference map zoom **5.03**. The conventional map zoom is translated approximately into the existing perspective-globe scale; the UI shows `MAP Z` and `GLOBE ×` separately. NASA GIBS VIIRS true color is preselected, but the schematic globe stays visible and no tile request occurs until the user opens the satellite source panel and separately opts in. See the [Atlas map guide](worldview-atlas.md) for the layer statuses and source notes.
 
 Drag the globe to rotate it, use the zoom control, or choose a city preset. Enter a city, decimal coordinates such as `38.9072, -77.0369`, or a `geo:` URI into local search and press Enter. Search covers nine original city presets and imported records, not a global geocoder.
 
@@ -28,7 +30,7 @@ Share view validates the scene, writes an encoded URL and copies it when clipboa
 
 ## Optional external reads
 
-External requests start **off** and require a manual refresh. The browser sends the chosen coordinates to the named provider for weather/aircraft requests. There is no key-entry control because the three implemented sources are keyless. The [provider matrix](worldview-data-sources.md) distinguishes these from integrations that require credentials, contracts or licenses and do **not** yet exist.
+External requests start **off**. Each provider has its own user opt-in and manual refresh; keyed sources require server configuration and the app does not collect keys in the browser. URL parameters can select display filters, but never grant network permission. The [provider matrix](worldview-data-sources.md) and [Atlas map guide](worldview-atlas.md) distinguish implemented adapters from deployment configuration, data availability, and unsupported layers.
 
 - **USGS:** up to 100 earthquakes from the trailing 24 hours. Event timestamps are distinct from snapshot retrieval time. This is not an early-warning system.
 - **NOAA/NWS:** U.S. `weather.gov` gridpoint forecast. The record includes forecast-period temperature, unit, wind, short description and validity. Its timestamp is forecast issuance, not an observed weather measurement; expired periods are stale. No global forecast, radar, lightning or real thermal data is implied.
@@ -44,7 +46,7 @@ Paste a two-line TLE you are authorized to use. The local satellite.js SGP4 modu
 
 ## Validation and known limits
 
-Local validation for this change:
+The following checks were reported for the prior World View branch and are historical context, not verification of the Atlas changes in this fork:
 
 - Frontend TypeScript check and production build succeeded; all 230 frontend tests pass, including credential/pack sanitization, scene validation, geographic/director math, local raster georeferencing, imagery AOI clipping/persistence, mocked provider security/freshness and orbital propagation.
 - All 610 backend regression tests passed, including existing aircraft-related coverage. No backend or autopilot control code changed.
@@ -53,7 +55,7 @@ Local validation for this change:
 - No real Sentinel-1/Umbra provider asset was validated end-to-end; only assets with independently valid transforms can be draped. The headless SwiftShader result is not a physical GPU/device compatibility matrix, and oblique view, voice/microphone capture and every provider's production licensing remain unvalidated.
 - The lazy-loaded Three.js vendor chunk produces a build-size warning (527.42 kB minified / 131.88 kB gzip). Existing platform routes do not load the World View entry until it is selected.
 
-Run locally with `pnpm --dir apps/management-web dev`. Validate with `pnpm --dir apps/management-web test`, `pnpm --dir apps/management-web typecheck`, `pnpm --dir apps/management-web build`, and the repository's Python test environment. This workspace is included in main through PR #18 (merge commit `b68d913`). Merge status does not establish deployment, Lattice sandbox validation, production provider configuration, or operational readiness.
+Run locally with `pnpm --dir apps/management-web dev`. Validate with `pnpm --dir apps/management-web test`, `pnpm --dir apps/management-web typecheck`, `pnpm --dir apps/management-web build`, and the repository's Python test environment. The historical PR #18 notes above describe the inherited Mark 2 base; they do not establish validation, deployment, production provider configuration, or operational readiness for this fork.
 
 ## Source-grounded scene analyst
 

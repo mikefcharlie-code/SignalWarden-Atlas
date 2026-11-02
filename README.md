@@ -1,4 +1,4 @@
-# SignalWarden AI
+# SignalWarden Atlas
 
 **Follow the signal. Trace the evidence. See the context.**
 
@@ -11,7 +11,7 @@ A local-first workspace for observations, evidence-linked analysis, source-cited
 | **Explore observations** | Search platform and sensor records with exact citations, provenance labels, freshness checks, and visible conflicts or missing data. |
 | **Ask grounded questions** | Use deterministic evidence assessments and bounded scene queries without a model. Optional local Qwen can organize cited findings. |
 | **Build cited reports** | Preview platform status, sensor provenance, incident timelines, data quality, and handoffs; export Markdown or JSON with evidence and coverage limits. |
-| **Work in World View** | Explore offline spatial layers, search places or coordinates, annotate and share scenes, replay synthetic tracks, and import/export bounded observation packs. Calculate satellite positions and geometric passes from supplied TLEs. |
+| **Explore Atlas** | Open the map at 30.83857, -83.26409 and reference zoom 5.03; use display-only controls for cameras, aircraft, AIS and road incidents. NASA GIBS satellite imagery is preselected but external tile requests remain off until a separate opt-in. The globe/map zoom conversion is approximate. |
 | **Receive aircraft telemetry** | Read PX4/ArduPilot MAVLink over serial, UDP, or TCP with normalized observations and source/freshness labels. A separate opt-in WebSocket stream supports telemetry delivery. |
 | **Review outages and recovery** | Inspect labeled in-memory snapshots and a return digest that separates API recovery from source recovery. Old observations remain old; reload clears retained state. |
 | **Set up local models** | Explicit install, verification, cancellation, and inference workflows for Qwen, SSD-1B, Wan, ResNet-18, and X-CLIP. No automatic weight downloads; generated media stays outside observation evidence. |
@@ -24,7 +24,7 @@ A local-first workspace for observations, evidence-linked analysis, source-cited
 
 - **Receive-only telemetry; separate bounded commands.** The PX4/ArduPilot adapter still receives only and never transmits MAVLink. Synthetic fleet views are not bound to it. A separate, disabled-by-default [civilian operator command gateway](docs/civilian-operator-commands.md) can dispatch signed `hold`, `return_home`, and `land` requests to an independently provisioned civilian HTTPS bridge. It has no extra confirmation prompt. A bounded run may execute a fixed operator-authorized sequence with status visibility and abort; AI-generated live decisions, arbitrary commands, mission upload, targeting, arming, and weapon/effector tasking remain excluded. Training C2 remains browser-local. No real-hardware, SITL/HIL, or flight validation is claimed. Tracegate does not authorize flight or certify safety.
 - **Local records, limited external reads.** The observation dataset is mock/offline; actual Lattice integration is absent. Manual, opt-in adapters cover USGS earthquakes, U.S. NOAA/NWS forecasts, and coarse adsb.lol positions—not dependable live-feed coverage. Provider terms, staleness, rate limits, and failures apply.
-- **Original World View, not full God's Eye parity.** Imagery/terrain, live AIS, traffic/camera catalogs, FIRMS, and other documented integrations remain unavailable. No upstream assets or datasets are bundled. TLE calculations are geometric estimates, not sightings or visibility forecasts.
+- **Original Atlas map, not full God's Eye parity.** No God's Eye imagery or provider datasets are bundled. NASA GIBS and other documented imagery/context adapters are optional, deployment-dependent reads with separate consent, attribution, and freshness requirements; keyed services require server configuration. Road works and road closures have no dedicated layer in this build. TLE calculations are geometric estimates, not sightings or visibility forecasts.
 - **Opt-in World View context relays.** The current tree also contains disabled-by-default, read-only AIS, weather/air, ocean, hazard, space, basemap, public-traffic, mobility, and GPSJAM relays. GPSJAM has its own checkbox, is a delayed daily inferred GNSS-interference aggregate (not a jammer detection/location), and is independent of the shared network toggle. The relays enforce bounded requests, keep credentials server-side, and label `not_configured`, stale, failed, synthetic, or unknown results. They provide context only—not navigation, identity, plate/face analysis, missions, controls, or effectors.
 - **Validation has boundaries.** Model workflows were checked with fixtures/mocks, not actual weights or GPU inference. Browser checks exercised the SVG fallback, not WebGL. Model output is advisory, not verified detection; display filters do not add sensor capabilities.
 - **Keep the reference API local.** Production authorization, rate limiting, and access-control hardening are incomplete. External AI requires separate configuration and export consent; local mode never silently falls back to it. Optional browser speech may use the browser vendor's service.
@@ -48,7 +48,7 @@ pnpm install --frozen-lockfile
 pnpm dev
 ```
 
-Start with **Observations** (`/observations`), **World View** (`/worldview`), and **Reports & documents** (`/reports`). Demonstrations use synthetic/local data; aircraft ingestion, streaming, model inference, and external reads each require separate setup.
+The root page opens **Atlas** (`/worldview`); **Observations** (`/observations`) and **Reports & documents** (`/reports`) remain available. Demonstrations use synthetic/local data; aircraft ingestion, streaming, model inference, and external reads each require separate setup.
 
 The stack is React/TypeScript with Vite, Three.js and satellite.js, backed by a Python API and versioned JSON Schemas. Storage is in-memory by default; optional PostgreSQL setup is in the [API guide](services/management-api/README.md). Model-specific hardware and runtime requirements are in [local AI setup](docs/local-ai-setup.md); Wan requires CUDA.
 
@@ -68,7 +68,7 @@ These are development checks, not certification. PostgreSQL has no replacement a
 
 - **Start here:** [Documentation hub](docs/README.md) · [Platform guide](docs/platform-guide.md) · [Developer guide](docs/developer-guide.md)
 - **Evidence:** [Observations](docs/observation-workspace.md) · [Copilot and recovery](docs/evidence-copilot.md) · [Reports](docs/platform-reports.md)
-- **World View:** [Workspace](docs/worldview-workspace.md) · [Scene analyst](docs/worldview-ai-analyst.md) · [GPSJAM context and terms](docs/worldview-gpsjam.md) · [Feature gaps](docs/gods-eye-capability-coverage.md) · [Provider terms](docs/worldview-data-sources.md) · [Port audit](docs/worldview-port-audit.md)
+- **World View:** [Atlas map and layer behavior](docs/worldview-atlas.md) · [Workspace](docs/worldview-workspace.md) · [Scene analyst](docs/worldview-ai-analyst.md) · [GPSJAM context and terms](docs/worldview-gpsjam.md) · [Feature gaps](docs/gods-eye-capability-coverage.md) · [Provider terms](docs/worldview-data-sources.md) · [Port audit](docs/worldview-port-audit.md)
 - **Integrations:** [Aircraft telemetry](docs/aircraft-integration.md) · [Offline catalog boundary](docs/lattice-readonly-integration.md) · [Local model inference](docs/local-ai-inference.md)
 - **Ground vehicles:** [Offline relative LiDAR odometry](docs/ground-vehicle-odometry.md)
 - **Engineering:** [Architecture](docs/architecture.md) · [Safety and security](docs/safety-security.md) · [Validation](docs/validation-and-testing.md) · [Open decisions](docs/project-brief.md)
@@ -77,4 +77,4 @@ These are development checks, not certification. PostgreSQL has no replacement a
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) and [SECURITY.md](SECURITY.md). Keep reference behavior distinct from validated integrations; never commit secrets, private operational logs, real location traces, or model weights.
 
-SignalWarden AI is the display name; `ucas-drone-management` and technical identifiers remain unchanged. Documentation is subject to owner review. No open-source license has been selected; visibility alone grants no reuse rights. The [patent source package](source-materials/patent-package-2026-10-06/) and [engineering digest](docs/patent-derived-specifications.md) preserve source concepts, not validated requirements, flight evidence, or legal conclusions.
+SignalWarden Atlas is the display name for this fork; existing technical identifiers and Mark 2 documentation are retained where compatibility requires them. Documentation is subject to owner review. No open-source license has been selected or added; visibility alone grants no reuse rights. The [patent source package](source-materials/patent-package-2026-10-06/) and [engineering digest](docs/patent-derived-specifications.md) preserve source concepts, not validated requirements, flight evidence, or legal conclusions.

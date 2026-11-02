@@ -14,7 +14,7 @@ SignalWarden AI is a local-first reference workspace for observations, evidence-
 ### Workspace or training user
 
 1. Start with the [platform guide](platform-guide.md) and [Observation workspace](observation-workspace.md).
-2. Review [World View](worldview-workspace.md), the [scene analyst](worldview-ai-analyst.md), and [provider coverage and terms](worldview-data-sources.md).
+2. Review the [Atlas map and layer behavior](worldview-atlas.md), [World View workspace](worldview-workspace.md), the [scene analyst](worldview-ai-analyst.md), and [provider coverage and terms](worldview-data-sources.md).
 3. Generate [source-cited reports](platform-reports.md), or review [local-model setup](local-ai-setup.md) and [inference workflows](local-ai-inference.md).
 4. For disconnected demos, read the [training console guide](simulation-training-console.md), [demo RBAC design](rbac-permission-management-ui.md), and [operations runbook](operations-runbook.md).
 
@@ -46,7 +46,7 @@ SignalWarden AI is a local-first reference workspace for observations, evidence-
 | Local-first assistance | [Local runtime, external opt-in, and resilient API reads](observation-assistance-networking.md) |
 | Optional local models | [Installation and hardware limits](local-ai-setup.md), [browser installer](local-ai-browser-setup.md), and [advisory inference workflows](local-ai-inference.md) |
 | Warden-NAV | [Navigation-integrity advisory decision](decisions/0007-navigation-integrity-model.md), [pinned artifact and synthetic evaluation](../configs/warden-nav-artifact.json), and [dependency/license review](warden-th-dependency-audit.md) |
-| Spatial workspace | [World View](worldview-workspace.md), [scene analyst](worldview-ai-analyst.md), [GPSJAM inferred GNSS context](worldview-gpsjam.md), [feature gaps](gods-eye-capability-coverage.md), and [snapshot port audit](worldview-port-audit.md) |
+| Spatial workspace | [Atlas map and layer behavior](worldview-atlas.md), [World View](worldview-workspace.md), [scene analyst](worldview-ai-analyst.md), [GPSJAM inferred GNSS context](worldview-gpsjam.md), [feature gaps](gods-eye-capability-coverage.md), and [snapshot port audit](worldview-port-audit.md) |
 | Offline analysis libraries | [Turf spatial checks, uPlot telemetry charts, licenses and limits](offline-analysis-libraries.md) |
 | External sources | [Opt-in adapters, coverage, provider terms, and unavailable integrations](worldview-data-sources.md) |
 | Reports | [Platform-wide cited previews and Markdown/JSON exports](platform-reports.md) |

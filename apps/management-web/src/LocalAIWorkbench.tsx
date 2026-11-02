@@ -82,7 +82,7 @@ export function LocalAIWorkbench({ modelStatus, repositoryRoot = '.' }: LocalAIW
 
   return <section className="lai-workbench" aria-labelledby="lai-title">
     <header className="lai-header">
-      <div><span className="eyebrow">SignalWarden AI / operator setup</span><h1 id="lai-title">Local AI workbench</h1><p>Optional, explicit model installation from your browser, with separate smoke testing. No weights download at startup.</p></div>
+      <div><span className="eyebrow">SignalWarden Atlas / operator setup</span><h1 id="lai-title">Local AI workbench</h1><p>Optional, explicit model installation from your browser, with separate smoke testing. No weights download at startup.</p></div>
       <span className="status-pill orange"><span className="status-dot orange" /> NO AUTO-DOWNLOAD</span>
     </header>
 
