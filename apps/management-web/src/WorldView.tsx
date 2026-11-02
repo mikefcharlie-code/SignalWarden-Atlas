@@ -53,6 +53,7 @@ import {
   isAtlasSignalVisible,
   mapZoomToGlobeScale,
   resolveAtlasInitialView,
+  trafficLayerVisible,
   type AtlasSignalKey,
   type AtlasSignalFilters,
 } from "./worldview-atlas";
@@ -369,8 +370,8 @@ export function WorldView(props: Props) {
       setLayers((previous) => ({ ...previous, vessels: enabled }));
       if (enabled) { setProviderDockOpen(true); setAisOpen(true); }
     }
-    if (key === "road-incidents") {
-      setLayers((previous) => ({ ...previous, traffic: enabled }));
+    if (key === "road-incidents" || key === "road-works" || key === "road-closures") {
+      setLayers((previous) => ({ ...previous, traffic: trafficLayerVisible(next) }));
       if (enabled) { setProviderDockOpen(true); setPublicTrafficOpen(true); }
     }
     if (key === "livecams" && enabled) { setProviderDockOpen(true); setPublicTrafficOpen(true); }

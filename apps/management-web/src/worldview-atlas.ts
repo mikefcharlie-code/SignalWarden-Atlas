@@ -17,6 +17,10 @@ export const ATLAS_SIGNAL_KEYS = [
 export type AtlasSignalKey = (typeof ATLAS_SIGNAL_KEYS)[number];
 export type AtlasSignalFilters = Readonly<Record<AtlasSignalKey, boolean>>;
 
+export function trafficLayerVisible(filters: AtlasSignalFilters): boolean {
+  return filters["road-works"] || filters["road-incidents"] || filters["road-closures"];
+}
+
 export const ATLAS_SIGNAL_CONTROLS: ReadonlyArray<Readonly<{
   id: AtlasSignalKey;
   label: string;
@@ -28,9 +32,9 @@ export const ATLAS_SIGNAL_CONTROLS: ReadonlyArray<Readonly<{
   { id: "staticcams", label: "Camera locations", detail: "Synthetic / imported points", state: "demo", status: "DEMO / IMPORT" },
   { id: "planes", label: "Aircraft / planes", detail: "Synthetic + manual ADS-B refresh", state: "demo", status: "DEMO / OPT-IN" },
   { id: "ais", label: "AIS vessels", detail: "Receive-only · self-reported", state: "opt-in", status: "OPT-IN" },
-  { id: "road-works", label: "Road works", detail: "No dedicated provider adapter", state: "unavailable", status: "UNAVAILABLE" },
+  { id: "road-works", label: "Road works", detail: "Georgia 511 / GDOT · manual feed refresh", state: "opt-in", status: "OPT-IN" },
   { id: "road-incidents", label: "Road incidents", detail: "TomTom relay · server key required", state: "opt-in", status: "OPT-IN" },
-  { id: "road-closures", label: "Road closures", detail: "No dedicated closure layer", state: "unavailable", status: "UNAVAILABLE" },
+  { id: "road-closures", label: "Road closures", detail: "Georgia 511 / GDOT · manual feed refresh", state: "opt-in", status: "OPT-IN" },
 ]);
 
 const FOV_HALF_RAD = (38 / 2) * Math.PI / 180;
@@ -100,10 +104,10 @@ export function resolveAtlasInitialView(search = ""): AtlasInitialView {
     staticcams: hasLayers ? layerSet.has("staticcams") : true,
     planes: hasLayers ? layerSet.has("planes") : true,
     ais: hasSignals ? signalSet.has("ais") : false,
-    // These have no dedicated adapter in this build. URL hints cannot enable a missing source.
-    "road-works": false,
+    // URL signal hints select display filters only; they never permit a provider request.
+    "road-works": hasSignals ? signalSet.has("road-works") : false,
     "road-incidents": hasSignals ? signalSet.has("road-incidents") : false,
-    "road-closures": false,
+    "road-closures": hasSignals ? signalSet.has("road-closures") : false,
   });
   return Object.freeze({ center: Object.freeze(center), mapZoom, globeScale: mapZoomToGlobeScale(mapZoom), basemap, signalFilters });
 }
@@ -113,6 +117,10 @@ export function isAtlasSignalVisible(layer: string, id: string, filters: AtlasSi
   if (layer === "aircraft") return filters.planes;
   if (layer === "cameras") return id.startsWith("pubcam-") ? filters.livecams : filters.staticcams;
   if (layer === "vessels") return filters.ais;
-  if (layer === "traffic") return filters["road-incidents"];
+  if (layer === "traffic") {
+    if (id.startsWith("ga511-roadwork-")) return filters["road-works"];
+    if (id.startsWith("ga511-closures-")) return filters["road-closures"];
+    return filters["road-incidents"];
+  }
   return true;
 }

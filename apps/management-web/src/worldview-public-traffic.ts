@@ -18,11 +18,13 @@ export const PUBLIC_TRAFFIC_HEADER = "X-SignalWarden-Traffic";
 export const CATALOG_STALE_MS = 15 * 60_000;
 export const SNAPSHOT_STALE_MS = 10 * 60_000;
 export const TRAFFIC_STALE_MS = 10 * 60_000;
+export const GA511_STALE_MS = 15 * 60_000;
 export const MAX_RADIUS_KM = 150;
 export const TOMTOM_MAX_RADIUS_KM = 49;
+export const GA511_MAX_RADIUS_KM = 150;
 const MAX_JSON_BYTES = 6 * 1024 * 1024;
 const TIMEOUT_MS = 25_000;
-export const OBSERVATION_PREFIX = { cameras: "pubcam-", traffic: "tomtom-" } as const;
+export const OBSERVATION_PREFIX = { cameras: "pubcam-", traffic: "tomtom-", roadWorks: "ga511-roadwork-", roadClosures: "ga511-closures-" } as const;
 
 export type ProviderState = "available" | "not_configured" | "disabled";
 export type CameraProvider = Readonly<{
@@ -45,6 +47,11 @@ export type CameraProvider = Readonly<{
 export type ProviderListing = Readonly<{
   cameraProviders: CameraProvider[];
   traffic: Readonly<{ name: string; status: ProviderState; keyEnv: string; keyUrl: string; attribution: string; license: string; termsUrl: string; verified: string }>;
+  roadEvents: RoadEventsProvider;
+}>;
+export type RoadEventsProvider = Readonly<{
+  id: "ga511"; name: string; authority: string; region: string; coverage: string; status: ProviderState;
+  keyEnv: string; keyUrl: string; attribution: string; license: string; termsUrl: string; verified: string;
 }>;
 export type Camera = Readonly<{
   id: string;
@@ -102,6 +109,16 @@ export type TrafficResult = Readonly<{
   incidents: Incident[]; truncated: boolean; flow: Flow | null; flowError: string | null;
   sourceUrl: string; flowSourceUrl: string;
 }>;
+export type Ga511RoadEvent = Readonly<{
+  id: string; type: "roadwork" | "closures"; lat: number; lon: number; roadway: string | null; direction: string | null;
+  description: string; organization: string | null; lanesAffected: string | null; fullClosure: boolean | null; severity: string | null;
+  reportedAt: string | null; lastUpdatedAt: string | null; startAt: string | null; plannedEndAt: string | null;
+}>;
+export type Ga511RoadEventsResult = Readonly<{
+  provider: "ga511"; providerName: string; authority: string; attribution: string; license: string; termsUrl: string;
+  verified: string; region: string; coverage: string; status: "ok"; retrievedAt: string; events: Ga511RoadEvent[];
+  totalInArea: number; truncated: boolean; sourceUrl: string; cached: boolean;
+}>;
 export type Bbox = Readonly<{ west: number; south: number; east: number; north: number }>;
 export type Fetcher = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 
@@ -153,6 +170,7 @@ export function coverageIncludes(provider: Pick<CameraProvider, "coverage">, bbo
 }
 
 async function relayJson(path: string, params: Record<string, string>, fetcher: Fetcher, signal?: AbortSignal): Promise<unknown> {
+  if (signal?.aborted) throw new RelayError(0, "cancelled", "Request cancelled");
   const query = new URLSearchParams(params).toString();
   const url = `${PUBLIC_TRAFFIC_RELAY}/${path}${query ? `?${query}` : ""}`;
   const controller = new AbortController();
@@ -211,14 +229,23 @@ function parseProvider(v: unknown): CameraProvider | null {
 
 export async function fetchProviders(fetcher: Fetcher = fetch, signal?: AbortSignal): Promise<ProviderListing> {
   const body = await relayJson("providers", {}, fetcher, signal);
-  if (!obj(body) || !Array.isArray(body.cameraProviders) || !obj(body.traffic)) throw new RelayError(200, "relay_schema", "Unexpected provider listing");
+  if (!obj(body) || !Array.isArray(body.cameraProviders) || !obj(body.traffic) || !obj(body.roadEvents)) throw new RelayError(200, "relay_schema", "Unexpected provider listing");
   const t = body.traffic;
+  const g = body.roadEvents;
+  const roadStatus: ProviderState = ["available", "not_configured", "disabled"].includes(g.status as string) ? g.status as ProviderState : "not_configured";
   return {
     cameraProviders: body.cameraProviders.map(parseProvider).filter((p): p is CameraProvider => !!p),
     traffic: {
       name: str(t.name, 120) ?? "TomTom Traffic", status: (["available", "not_configured", "disabled"].includes(t.status as string) ? t.status : "not_configured") as ProviderState,
       keyEnv: str(t.keyEnv, 80) ?? "UCAS_TOMTOM_API_KEY", keyUrl: https(t.keyUrl) ?? "", attribution: str(t.attribution) ?? "Traffic data © TomTom",
       license: str(t.license) ?? "", termsUrl: https(t.termsUrl) ?? "", verified: str(t.verified) ?? "unverified",
+    },
+    roadEvents: {
+      id: "ga511", name: str(g.name, 120) ?? "Georgia 511 road events", authority: str(g.authority, 200) ?? "Georgia Department of Transportation (GDOT)",
+      region: str(g.region, 120) ?? "Georgia, US", coverage: str(g.coverage, 300) ?? "Coverage as stated by Georgia 511; local-road completeness is not documented.",
+      status: roadStatus, keyEnv: str(g.keyEnv, 80) ?? "UCAS_511GA_API_KEY", keyUrl: https(g.keyUrl) ?? "https://511ga.org/developers/doc",
+      attribution: str(g.attribution) ?? "511GA / Georgia Department of Transportation (GDOT)", license: str(g.license) ?? "511GA developer API terms apply; no open-data license asserted.",
+      termsUrl: https(g.termsUrl) ?? "https://511ga.org/developers/doc", verified: str(g.verified) ?? "unverified",
     },
   };
 }
@@ -308,6 +335,40 @@ export async function fetchTomTom(bbox: Bbox, fetcher: Fetcher = fetch, signal?:
     verified: str(body.verified) ?? "unverified", retrievedAt: iso(body.retrievedAt)!,
     incidents: body.incidents.slice(0, 200).map(parseIncident).filter((i): i is Incident => !!i), truncated: body.truncated === true,
     flow, flowError: str(body.flowError, 80), sourceUrl: str(body.sourceUrl, 1000) ?? "", flowSourceUrl: str(body.flowSourceUrl, 1000) ?? "",
+  };
+}
+
+function parseGa511Event(v: unknown): Ga511RoadEvent | null {
+  if (!obj(v)) return null;
+  const id = str(v.id, 96), type = v.type;
+  if (!id || (type !== "roadwork" && type !== "closures") || !finite(v.lat) || !finite(v.lon) || Math.abs(v.lat) > 90 || Math.abs(v.lon) > 180) return null;
+  return {
+    id, type, lat: v.lat, lon: v.lon, roadway: str(v.roadway, 120), direction: str(v.direction, 60), description: str(v.description, 360) ?? "",
+    organization: str(v.organization, 120), lanesAffected: str(v.lanesAffected, 160), fullClosure: typeof v.fullClosure === "boolean" ? v.fullClosure : null,
+    severity: str(v.severity, 40), reportedAt: iso(v.reportedAt), lastUpdatedAt: iso(v.lastUpdatedAt), startAt: iso(v.startAt), plannedEndAt: iso(v.plannedEndAt),
+  };
+}
+
+export async function fetchGa511RoadEvents(bbox: Bbox, fetcher: Fetcher = fetch, signal?: AbortSignal): Promise<Ga511RoadEventsResult> {
+  const body = await relayJson("ga511/events", { west: String(bbox.west), south: String(bbox.south), east: String(bbox.east), north: String(bbox.north) }, fetcher, signal);
+  if (!obj(body) || body.provider !== "ga511" || !Array.isArray(body.events) || !iso(body.retrievedAt) || body.status !== "ok")
+    throw new RelayError(200, "relay_schema", "Unexpected Georgia 511 road-events response");
+  const sourceUrl = https(body.sourceUrl);
+  const source = sourceUrl ? new URL(sourceUrl) : null;
+  if (!source || source.hostname !== "511ga.org" || [...source.searchParams.keys()].some((key) => key.toLowerCase() === "key"))
+    throw new RelayError(200, "relay_schema", "Georgia 511 source URL is invalid or contains credentials");
+  const safeSourceUrl = source.href;
+  const termsUrl = https(body.termsUrl);
+  if (!termsUrl || new URL(termsUrl).hostname !== "511ga.org") throw new RelayError(200, "relay_schema", "Georgia 511 terms URL is invalid");
+  return {
+    provider: "ga511", providerName: str(body.providerName, 120) ?? "Georgia 511 road events", authority: str(body.authority, 200) ?? "Georgia Department of Transportation (GDOT)",
+    attribution: str(body.attribution, 200) ?? "511GA / Georgia Department of Transportation (GDOT)", license: str(body.license, 300) ?? "511GA developer API terms apply; no open-data license asserted.",
+    termsUrl, verified: str(body.verified, 300) ?? "unverified", region: str(body.region, 120) ?? "Georgia, US",
+    coverage: str(body.coverage, 300) ?? "Coverage as stated by Georgia 511; local-road completeness is not documented.",
+    status: "ok", retrievedAt: iso(body.retrievedAt)!, events: body.events.slice(0, 200).map(parseGa511Event).filter((e): e is Ga511RoadEvent =>
+      !!e && bbox.west <= e.lon && e.lon <= bbox.east && bbox.south <= e.lat && e.lat <= bbox.north),
+    totalInArea: finite(body.totalInArea) ? Math.max(0, Math.floor(body.totalInArea)) : 0, truncated: body.truncated === true,
+    sourceUrl: safeSourceUrl, cached: body.cached === true,
   };
 }
 
@@ -409,6 +470,35 @@ export function trafficObservations(result: TrafficResult, now = Date.now()): Wo
         providerTimestamp: null, freshnessBasis: "TomTom flow segment carries no timestamp; retrieval time shown",
         currentSpeedKmh: f.currentSpeedKmh, freeFlowSpeedKmh: f.freeFlowSpeedKmh, roadClass: f.functionalRoadClass,
         disclosure: "Aggregate segment speed; not individual vehicle data",
+      },
+    };
+    if (validateObservation(o)) out.push(o);
+  }
+  return out;
+}
+
+/** Georgia 511's documented roadwork and closures events, with source timestamps kept distinct from retrieval time. */
+export function ga511RoadEventObservations(result: Ga511RoadEventsResult, now = Date.now()): WorldObservation[] {
+  const common = {
+    provider: "Georgia 511 Events", attribution: clip(result.attribution), license: clip(result.license), termsUrl: clip(result.termsUrl),
+    sourceUrl: clip(result.sourceUrl), retrievedAt: result.retrievedAt, coverage: clip(result.coverage), verification: clip(result.verified),
+  };
+  const out: WorldObservation[] = [];
+  for (const event of result.events) {
+    const providerTime = event.lastUpdatedAt ?? event.reportedAt;
+    const observedAt = providerTime ?? result.retrievedAt;
+    const { freshness } = ageFreshness(providerTime, GA511_STALE_MS, now);
+    const isWork = event.type === "roadwork";
+    const label = `${isWork ? "Road work" : "Road closure"}${event.roadway ? ` · ${event.roadway}` : ""}${event.direction ? ` · ${event.direction}` : ""}${event.fullClosure === true ? " · full closure" : ""}${event.description ? ` · ${event.description}` : ""}`;
+    const o: WorldObservation = {
+      id: `${isWork ? OBSERVATION_PREFIX.roadWorks : OBSERVATION_PREFIX.roadClosures}${event.id}`.slice(0, 120),
+      layer: "traffic", point: { lat: event.lat, lon: event.lon }, observedAt, source: "Georgia 511 / GDOT", label: clip(label, 240), freshness, stale: freshness === "stale",
+      properties: {
+        ...common, eventType: event.type, eventId: event.id, roadway: event.roadway, direction: event.direction,
+        description: clip(event.description), organization: event.organization, lanesAffected: event.lanesAffected, fullClosure: event.fullClosure,
+        severity: event.severity, reportedAt: event.reportedAt, providerTimestamp: event.lastUpdatedAt, startAt: event.startAt,
+        plannedEndAt: event.plannedEndAt, freshnessBasis: providerTime ? "511GA event last-updated/reported timestamp; feed retrieval is listed separately" : "provider event timestamp unavailable; freshness unknown",
+        disclosure: "Reported Georgia 511 road event; coverage follows GDOT's stated interstate and state-route service. Missing events do not prove roads are clear.",
       },
     };
     if (validateObservation(o)) out.push(o);

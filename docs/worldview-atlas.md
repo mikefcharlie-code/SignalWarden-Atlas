@@ -17,9 +17,9 @@ The existing optional Esri World Imagery and Google 2D satellite relay controls 
 - **Live cameras:** filters public traffic-camera catalog results. A catalog entry or snapshot is not an onboard aircraft stream; there is no recognition, plate reading, or cross-camera tracking. Fetching requires the existing traffic relay, provider allowlist/configuration, and a separate manual request.
 - **AIS vessels:** filters vessel observations. AIS remains receive-only and self-reported/incomplete; the display checkbox is not the AIS session opt-in. The relay has its own explicit opt-in and manual refresh.
 - **Road incidents:** filters TomTom aggregate incident results. A deployment must enable the public-traffic and TomTom relay flags and configure a server-side key; the map switch itself does not fetch.
-- **Road works** and **road closures:** shown as unavailable because this build has no dedicated, independently verified layer for either category. A missing result must not be read as proof that no road work or closure exists.
+- **Road works** and **road closures:** separate display filters for Georgia 511 / GDOT Events API records. The layer filters do not fetch; loading the feed requires the existing World View network opt-in, the public-traffic relay, server configuration (`UCAS_511GA_ROAD_EVENTS_ENABLED=1` plus `UCAS_511GA_API_KEY`), and a manual refresh in the public traffic panel. 511GA states support for Georgia interstates and state routes; local-road completeness is not documented. Source attribution, retrieval time, event update time, stale status, and provider errors remain visible. Empty or missing results do not prove roads are clear.
 
-Provider data remain subject to coverage, freshness, source attribution, terms, and deployment configuration. No provider data is bundled. The provider panels preserve the existing bounded-read and source-status behavior.
+Provider data remain subject to coverage, freshness, source attribution, terms, and deployment configuration. No provider data is bundled. The [Georgia 511 API documentation](https://511ga.org/developers/doc) requires a registered account and developer key and documents a ten-call-per-60-second limit; the relay adds stricter request bounds, caching and throttling. The provider panels preserve the existing bounded-read and source-status behavior.
 
 ## Operating boundary
 
