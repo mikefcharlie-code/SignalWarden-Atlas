@@ -42,6 +42,8 @@ PROVIDER_FILTER_ENV = "UCAS_PUBLIC_CAMERA_PROVIDERS"
 TXDOT_DISTRICTS_ENV = "UCAS_TXDOT_DISTRICTS"
 TOMTOM_KEY_ENV = "UCAS_TOMTOM_API_KEY"
 TOMTOM_ENABLE_ENV = "UCAS_TOMTOM_TRAFFIC_ENABLED"
+GA511_KEY_ENV = "UCAS_511GA_API_KEY"
+GA511_ENABLE_ENV = "UCAS_511GA_ROAD_EVENTS_ENABLED"
 HEADER = "X-SignalWarden-Traffic"
 USER_AGENT = "SignalWarden-WorldView/0.1 (read-only public traffic camera catalog relay)"
 
@@ -58,6 +60,11 @@ MAX_CAMERAS = 300
 MAX_HALF_SPAN_DEG = 3.0
 TOMTOM_MAX_AREA_KM2 = 10_000.0
 MAX_INCIDENTS = 200
+GA511_MAX_AREA_KM2 = 90_000.0
+GA511_CACHE_TTL = 60.0
+GA511_MIN_INTERVAL = 7.0
+GA511_MAX_CACHE_ENTRIES = 32
+GA511_MAX_EVENTS = 200
 
 
 class PublicTrafficError(Exception):
@@ -692,6 +699,8 @@ _snapshot_attempts: dict[tuple[str, str], float] = {}
 _snapshot_window: list[float] = []
 _tomtom_cache: dict[str, tuple[float, dict[str, Any]]] = {}
 _tomtom_attempts: dict[str, float] = {}
+_ga511_cache: dict[str, tuple[float, dict[str, Any]]] = {}
+_ga511_attempts: dict[str, float] = {}
 _slots = threading.BoundedSemaphore(2)
 
 
@@ -699,6 +708,7 @@ def reset_state() -> None:
     with _lock:
         _catalog_cache.clear(); _catalog_attempts.clear(); _snapshot_attempts.clear()
         _snapshot_window.clear(); _tomtom_cache.clear(); _tomtom_attempts.clear()
+        _ga511_cache.clear(); _ga511_attempts.clear()
 
 
 # ---------------------------------------------------------------- guards
@@ -768,6 +778,17 @@ def providers() -> dict[str, Any]:
     return {
         "cameraProviders": [_public_provider(p) for p in PROVIDERS.values()],
         "traffic": {**TOMTOM, "status": tomtom_status},
+        "roadEvents": {
+            "id": "ga511", "provider": "ga511", "name": "Georgia 511 road events", "authority": "Georgia Department of Transportation (GDOT)",
+            "attribution": "511GA / Georgia Department of Transportation (GDOT)",
+            "license": "API developer key and current terms apply; no separate open-data license is asserted",
+            "termsUrl": "https://511ga.org/developers/doc", "keyUrl": "https://511ga.org/developers/doc",
+            "verified": "official Georgia 511 Events endpoint and documented event fields; requires a developer key",
+            "region": "Georgia, US", "coverage": "Georgia 511 publishes events for its stated interstates and state routes; local-road completeness is not documented.",
+            "status": ("disabled" if os.getenv(GA511_ENABLE_ENV, "0") != "1"
+                       else ("available" if _key(GA511_KEY_ENV) else "not_configured")),
+            "keyEnv": GA511_KEY_ENV,
+        },
         "limits": {"maxCameras": MAX_CAMERAS, "maxHalfSpanDegrees": MAX_HALF_SPAN_DEG, "catalogTtlSeconds": CATALOG_TTL,
                    "snapshotMinIntervalSeconds": SNAPSHOT_MIN_INTERVAL, "tomtomMaxAreaKm2": TOMTOM_MAX_AREA_KM2},
         "privacy": "Catalog metadata and on-demand display snapshots only. No plate reading, face recognition, image analysis, or cross-camera tracking.",
@@ -1056,6 +1077,98 @@ def tomtom(query: dict[str, list[str]]) -> dict[str, Any]:
     return result
 
 
+# ---------------------------------------------------------------- Georgia 511 road events
+
+GA511_URL = "https://511ga.org/api/v2/get/event"
+
+
+def _unix_iso(value: Any) -> str | None:
+    if isinstance(value, bool):
+        return None
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return None
+    if not math.isfinite(number) or number < 0 or number > 4102444800:
+        return None
+    return _not_future(_iso(datetime.fromtimestamp(number, timezone.utc)))
+
+
+def _ga511_event(row: Any, bbox: tuple[float, float, float, float]) -> dict[str, Any] | None:
+    if not isinstance(row, dict):
+        return None
+    event_type = _text(row.get("EventType"), 40).lower()
+    if event_type not in {"roadwork", "closures"}:
+        return None
+    ident = _safe_id(row.get("ID"))
+    coord = _coord(row.get("Latitude"), row.get("Longitude"))
+    if not ident or coord is None:
+        return None
+    w, s, e, n = bbox
+    if not (w <= coord[1] <= e and s <= coord[0] <= n):
+        return None
+    full = row.get("IsFullClosure")
+    full_closure = full if isinstance(full, bool) else None
+    return {
+        "id": ident, "type": event_type, "lat": round(coord[0], 6), "lon": round(coord[1], 6),
+        "roadway": _text(row.get("RoadwayName"), 120) or None, "direction": _text(row.get("DirectionOfTravel"), 60) or None,
+        "description": _text(row.get("Description"), 400) or None, "organization": _text(row.get("Organization"), 120) or None,
+        "lanesAffected": _text(row.get("LanesAffected"), 120) or None, "fullClosure": full_closure,
+        "severity": _text(row.get("Severity"), 40) or None,
+        "reportedAt": _unix_iso(row.get("Reported")), "lastUpdatedAt": _unix_iso(row.get("LastUpdated")),
+        "startAt": _unix_iso(row.get("StartDate")), "plannedEndAt": _unix_iso(row.get("PlannedEndDate")),
+    }
+
+
+def ga511_events(query: dict[str, list[str]]) -> dict[str, Any]:
+    _only(query, {"west", "south", "east", "north"})
+    if os.getenv(GA511_ENABLE_ENV, "0") != "1":
+        raise PublicTrafficError(404, "provider_disabled", f"Georgia 511 road events are disabled; set {GA511_ENABLE_ENV}=1")
+    key = _key(GA511_KEY_ENV)
+    if not key:
+        raise PublicTrafficError(503, "not_configured", f"Georgia 511 road events need {GA511_KEY_ENV} on the server; no data is shown")
+    bbox = _bbox(query, 10.0)
+    if _bbox_area_km2(bbox) > GA511_MAX_AREA_KM2:
+        raise PublicTrafficError(400, "bbox_too_large", "Georgia 511 event bbox must be at most 90,000 km²; zoom in")
+    cache_key = ",".join(f"{v:.5f}" for v in bbox)
+    now = clock()
+    with _lock:
+        hit = _ga511_cache.get(cache_key)
+        if hit and now - hit[0] < GA511_CACHE_TTL:
+            return {**hit[1], "cached": True}
+        if now - _ga511_attempts.get("global", 0.0) < GA511_MIN_INTERVAL:
+            raise PublicTrafficError(429, "road_events_throttled", "Georgia 511 requests are throttled; wait at least 7 seconds")
+        _ga511_attempts["global"] = now
+    url = GA511_URL + "?" + urlencode({"format": "json", "key": key})
+    if not _slots.acquire(blocking=False):
+        raise PublicTrafficError(503, "relay_busy", "public traffic relay concurrency limit reached")
+    try:
+        doc = _json(_http_get(url, ("511ga.org",), MAX_TRAFFIC_BYTES, "application/json"))
+    finally:
+        _slots.release()
+    if not isinstance(doc, list):
+        raise PublicTrafficError(502, "upstream_schema", "Georgia 511 Events schema was not recognised")
+    events = [event for event in (_ga511_event(row, bbox) for row in doc) if event]
+    center = ((bbox[1] + bbox[3]) / 2, (bbox[0] + bbox[2]) / 2)
+    events.sort(key=lambda event: (_distance_km(center, (event["lat"], event["lon"])), event["id"]))
+    total = len(events)
+    result = {
+        "provider": "ga511", "providerName": "Georgia 511 road events", "authority": "Georgia Department of Transportation (GDOT)",
+        "attribution": "511GA / Georgia Department of Transportation (GDOT)",
+        "license": "API developer key and current terms apply; no separate open-data license is asserted",
+        "termsUrl": "https://511ga.org/developers/doc", "verified": "official Georgia 511 Events endpoint and documented event fields; requires a developer key",
+        "region": "Georgia, US", "coverage": "Georgia 511 publishes events for its stated interstates and state routes; local-road completeness is not documented.",
+        "status": "ok", "retrievedAt": _now_iso(), "events": events[:GA511_MAX_EVENTS], "truncated": total > GA511_MAX_EVENTS,
+        "totalInArea": total, "sourceUrl": _strip_key(url, "key"), "cached": False,
+    }
+    with _lock:
+        if len(_ga511_cache) >= GA511_MAX_CACHE_ENTRIES:
+            oldest = min(_ga511_cache, key=lambda item: _ga511_cache[item][0])
+            del _ga511_cache[oldest]
+        _ga511_cache[cache_key] = (now, result)
+    return result
+
+
 # ---------------------------------------------------------------- dispatch
 
 def dispatch(method: str, suffix: list[str], query: dict[str, list[str]], headers: Any) -> dict[str, Any]:
@@ -1072,4 +1185,6 @@ def dispatch(method: str, suffix: list[str], query: dict[str, list[str]], header
         return snapshot(query)
     if suffix == ["tomtom"]:
         return tomtom(query)
+    if suffix == ["ga511", "events"]:
+        return ga511_events(query)
     raise PublicTrafficError(404, "not_found", "public traffic route was not found")

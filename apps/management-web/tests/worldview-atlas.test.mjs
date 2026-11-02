@@ -33,8 +33,8 @@ test("URL layer hints select display filters without enabling unsupported source
   assert.equal(view.signalFilters.planes, true);
   assert.equal(view.signalFilters.ais, true);
   assert.equal(view.signalFilters["road-incidents"], true);
-  assert.equal(view.signalFilters["road-works"], false);
-  assert.equal(view.signalFilters["road-closures"], false);
+  assert.equal(view.signalFilters["road-works"], true);
+  assert.equal(view.signalFilters["road-closures"], true);
 });
 
 test("invalid coordinates fall back safely and unsupported basemap values do not become URLs", () => {
@@ -62,5 +62,17 @@ test("signal controls filter only matching observations and leave unrelated laye
   assert.equal(atlas.isAtlasSignalVisible("cameras", "pubcam-provider-1", filters), false);
   assert.equal(atlas.isAtlasSignalVisible("vessels", "ais-provider-1", filters), false);
   assert.equal(atlas.isAtlasSignalVisible("traffic", "tomtom-incident-1", filters), false);
+  const roadFilters = atlas.resolveAtlasInitialView(supplied).signalFilters;
+  assert.equal(atlas.isAtlasSignalVisible("traffic", "ga511-roadwork-12", roadFilters), true);
+  assert.equal(atlas.isAtlasSignalVisible("traffic", "ga511-closures-13", roadFilters), true);
+  assert.equal(atlas.isAtlasSignalVisible("traffic", "ga511-roadwork-12", filters), false);
+  assert.equal(atlas.isAtlasSignalVisible("traffic", "ga511-closures-13", filters), false);
+  const workOnly = { ...filters, "road-incidents": false, "road-works": true };
+  assert.equal(atlas.trafficLayerVisible(workOnly), true, "road-work remains independent of TomTom incidents");
+  assert.equal(atlas.isAtlasSignalVisible("traffic", "ga511-roadwork-12", workOnly), true);
+  const closuresOnly = { ...filters, "road-incidents": false, "road-closures": true };
+  assert.equal(atlas.trafficLayerVisible(closuresOnly), true, "closures remain independent of TomTom incidents");
+  assert.equal(atlas.isAtlasSignalVisible("traffic", "ga511-closures-13", closuresOnly), true);
+  assert.equal(atlas.trafficLayerVisible(filters), false);
   assert.equal(atlas.isAtlasSignalVisible("weather", "weather-1", filters), true);
 });

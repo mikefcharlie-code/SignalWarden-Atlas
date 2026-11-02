@@ -80,10 +80,14 @@ test("provider listing parses status, key env names and verification", async () 
       { id: "broken", status: "available" },
     ],
     traffic: { name: "TomTom", status: "not_configured", keyEnv: "UCAS_TOMTOM_API_KEY", keyUrl: "https://developer.tomtom.com/user/register", attribution: "Traffic data © TomTom", license: "TomTom", termsUrl: "https://developer.tomtom.com/terms-and-conditions", verified: "unverified" },
+    roadEvents: { id: "ga511", name: "Georgia 511 road events", authority: "Georgia Department of Transportation (GDOT)", region: "Georgia, US", coverage: "Georgia interstates and state routes; local-road completeness is not documented.", status: "not_configured", keyEnv: "UCAS_511GA_API_KEY", keyUrl: "https://511ga.org/developers/doc", attribution: "511GA / Georgia Department of Transportation (GDOT)", license: "Developer API terms apply; no open-data license asserted.", termsUrl: "https://511ga.org/developers/doc", verified: "schema from official docs" },
   };
   const listing = await pt.fetchProviders(async () => json(body));
   assert.deepEqual(listing.cameraProviders.map((p) => [p.id, p.status, p.keyEnv]), [["caltrans", "available", null], ["wsdot", "not_configured", "UCAS_WSDOT_ACCESS_CODE"]]);
   assert.equal(listing.traffic.status, "not_configured");
+  assert.equal(listing.roadEvents.status, "not_configured");
+  assert.equal(listing.roadEvents.keyEnv, "UCAS_511GA_API_KEY");
+  assert.match(listing.roadEvents.coverage, /local-road completeness is not documented/);
   assert.ok(pt.coverageIncludes(listing.cameraProviders[0], { west: -122.4, south: 37.7, east: -122.2, north: 37.9 }));
   assert.ok(!pt.coverageIncludes(listing.cameraProviders[0], { west: 0, south: 51, east: 1, north: 52 }));
 });
@@ -141,6 +145,67 @@ test("TomTom incidents and flow become aggregate traffic observations", async ()
   assert.match(obs[1].label, /31\/56 km\/h/);
   assert.equal(obs[1].confidence, 0.95);
   assert.match(obs[1].properties.disclosure, /not individual vehicle/);
+});
+
+test("Georgia 511 events are fetched through the bounded same-origin relay and retain attribution and timestamps", async () => {
+  const bbox = { west: -82.5, south: 30.8, east: -82.1, north: 31.4 };
+  const seen = [];
+  const body = {
+    provider: "ga511", providerName: "Georgia 511 road events", authority: "Georgia Department of Transportation (GDOT)",
+    attribution: "511GA / Georgia Department of Transportation (GDOT)", license: "Developer API terms apply; no open-data license asserted.",
+    termsUrl: "https://511ga.org/developers/doc", verified: "Event schema verified from official API documentation",
+    region: "Georgia, US", coverage: "Georgia interstates and state routes; local-road completeness is not documented.", status: "ok",
+    retrievedAt: "2026-10-30T21:59:00Z", sourceUrl: "https://511ga.org/api/v2/get/event?format=json", cached: false,
+    totalInArea: 2, truncated: false,
+    events: [
+      { id: "work-1", type: "roadwork", lat: 31.23211, lon: -82.330672, roadway: "SR 38", direction: "Both Directions", description: "Road construction; two lanes blocked.", organization: "GA-Events", lanesAffected: "2 lanes blocked.", fullClosure: false, severity: "2", reportedAt: "2026-10-30T21:45:00Z", lastUpdatedAt: "2026-10-30T21:50:00Z", startAt: "2026-10-30T20:00:00Z", plannedEndAt: "2026-11-01T00:00:00Z" },
+      { id: "close-2", type: "closures", lat: 31.1, lon: -82.25, roadway: "US 1", direction: "Northbound", description: "Road closed.", organization: "GA-Events", lanesAffected: "All lanes", fullClosure: true, severity: "3", reportedAt: "2026-10-30T18:00:00Z", lastUpdatedAt: "2026-10-30T19:00:00Z", startAt: null, plannedEndAt: null },
+      { id: "outside", type: "roadwork", lat: 32, lon: -82.3 },
+      { id: "wrong-type", type: "accidentsAndIncidents", lat: 31.2, lon: -82.3 },
+      { id: "invalid", type: "closures", lat: "bad", lon: -82.3 },
+    ],
+  };
+  const result = await pt.fetchGa511RoadEvents(bbox, async (url, init) => { seen.push({ url, init }); return json(body); });
+  const url = new URL(seen[0].url, "http://ui.local");
+  assert.equal(url.pathname, "/api/v1/public-traffic/ga511/events");
+  assert.deepEqual([...url.searchParams.keys()].sort(), ["east", "north", "south", "west"]);
+  assert.equal(seen[0].init.headers["X-SignalWarden-Traffic"], "enabled");
+  assert.equal(seen[0].init.method, "GET");
+  assert.doesNotMatch(seen[0].url, /key|token|511ga\.org/i);
+  assert.deepEqual(result.events.map((event) => [event.id, event.type]), [["work-1", "roadwork"], ["close-2", "closures"]]);
+  assert.equal(result.sourceUrl, body.sourceUrl);
+  assert.equal(result.attribution, "511GA / Georgia Department of Transportation (GDOT)");
+  assert.equal(result.events[0].lastUpdatedAt, "2026-10-30T21:50:00.000Z");
+  const observations = pt.ga511RoadEventObservations(result, NOW);
+  assert.equal(observations.length, 2);
+  assert.ok(observations.every((o) => core.validateObservation(o) && o.layer === "traffic"));
+  assert.ok(observations[0].id.startsWith(pt.OBSERVATION_PREFIX.roadWorks));
+  assert.ok(observations[1].id.startsWith(pt.OBSERVATION_PREFIX.roadClosures));
+  assert.equal(observations[0].freshness, "fresh");
+  assert.equal(observations[1].freshness, "stale");
+  assert.equal(observations[1].properties.fullClosure, true);
+  assert.match(observations[1].properties.disclosure, /do not prove roads are clear/);
+  assert.doesNotMatch(JSON.stringify(observations), /key=/i);
+});
+
+test("Georgia 511 client caps events, rejects key-bearing provenance, and aborts promptly", async () => {
+  const bbox = { west: -82.5, south: 30.8, east: -82.1, north: 31.4 };
+  const base = { provider: "ga511", status: "ok", retrievedAt: "2026-10-30T21:59:00Z", sourceUrl: "https://511ga.org/api/v2/get/event?format=json", termsUrl: "https://511ga.org/developers/doc", events: [] };
+  const events = Array.from({ length: 201 }, (_, i) => ({ id: `event-${i}`, type: "roadwork", lat: 31.1, lon: -82.3 }));
+  const capped = await pt.fetchGa511RoadEvents(bbox, async () => json({ ...base, events, totalInArea: 201, truncated: true }));
+  assert.equal(capped.events.length, 200);
+  assert.equal(capped.totalInArea, 201);
+  assert.equal(capped.truncated, true);
+  await assert.rejects(pt.fetchGa511RoadEvents(bbox, async () => json({ ...base, sourceUrl: "https://511ga.org/api/v2/get/event?format=json&Key=secret" })), /contains credentials/);
+  const cancelledBeforeStart = new AbortController();
+  cancelledBeforeStart.abort();
+  let calls = 0;
+  await assert.rejects(pt.fetchGa511RoadEvents(bbox, async () => { calls++; return json({ ...base }); }, cancelledBeforeStart.signal), (error) => error instanceof pt.RelayError && error.code === "cancelled");
+  assert.equal(calls, 0);
+  const controller = new AbortController();
+  const pending = pt.fetchGa511RoadEvents(bbox, (_url, init) => new Promise((_, reject) => init.signal.addEventListener("abort", () => reject(new Error("aborted")))), controller.signal);
+  controller.abort();
+  await assert.rejects(pending, (error) => error instanceof pt.RelayError && error.code === "cancelled");
 });
 
 test("panel import and initial render make no requests; WorldView mounts it lazily", async () => {

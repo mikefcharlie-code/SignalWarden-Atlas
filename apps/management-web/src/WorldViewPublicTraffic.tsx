@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import type { GeoPoint, WorldObservation } from "./worldview-core";
 import {
-  areaBounds, ageFreshness, cameraObservations, coverageIncludes, fetchCatalog, fetchProviders, fetchSnapshot, fetchTomTom,
-  formatAge, hotlinkUrl, trafficObservations, CATALOG_STALE_MS, OBSERVATION_PREFIX, RelayError, SNAPSHOT_STALE_MS,
-  TOMTOM_MAX_RADIUS_KM, type Camera, type CameraCatalog, type ProviderListing, type TrafficResult,
+  areaBounds, ageFreshness, cameraObservations, coverageIncludes, fetchCatalog, fetchGa511RoadEvents, fetchProviders, fetchSnapshot, fetchTomTom,
+  formatAge, ga511RoadEventObservations, hotlinkUrl, trafficObservations, CATALOG_STALE_MS, GA511_MAX_RADIUS_KM, GA511_STALE_MS,
+  OBSERVATION_PREFIX, RelayError, SNAPSHOT_STALE_MS, TOMTOM_MAX_RADIUS_KM, type Camera, type CameraCatalog, type Ga511RoadEventsResult,
+  type ProviderListing, type TrafficResult,
 } from "./worldview-public-traffic";
 import "./worldview-public-traffic.css";
 
@@ -36,9 +37,12 @@ export default function WorldViewPublicTraffic({ center, network, active = false
   const [cameraId, setCameraId] = useState("");
   const [shown, setShown] = useState<Shown | null>(null);
   const [traffic, setTraffic] = useState<TrafficResult | null>(null);
-  const [busy, setBusy] = useState<"" | "providers" | "catalog" | "snapshot" | "traffic">("");
+  const [busy, setBusy] = useState<"" | "providers" | "catalog" | "snapshot" | "traffic" | "road-events">("");
   const [message, setMessage] = useState("Idle. No relay or provider requests have been made.");
   const [trafficMessage, setTrafficMessage] = useState("Idle. TomTom is only queried on request.");
+  const [roadEvents, setRoadEvents] = useState<Ga511RoadEventsResult | null>(null);
+  const [roadEventsArea, setRoadEventsArea] = useState<{ center: GeoPoint; radius: number } | null>(null);
+  const [roadEventsMessage, setRoadEventsMessage] = useState("Idle. Georgia 511 is only queried on request.");
   const [clock, setClock] = useState(Date.now());
   const emit = useRef(onObservations);
   emit.current = onObservations;
@@ -59,6 +63,8 @@ export default function WorldViewPublicTraffic({ center, network, active = false
       if (blob.current) URL.revokeObjectURL(blob.current);
       emit.current?.(OBSERVATION_PREFIX.cameras, []);
       emit.current?.(OBSERVATION_PREFIX.traffic, []);
+      emit.current?.(OBSERVATION_PREFIX.roadWorks, []);
+      emit.current?.(OBSERVATION_PREFIX.roadClosures, []);
     };
   }, []);
   // Re-label markers stale once their catalog / traffic read ages out.
@@ -68,6 +74,13 @@ export default function WorldViewPublicTraffic({ center, network, active = false
   useEffect(() => {
     if (traffic) emit.current?.(OBSERVATION_PREFIX.traffic, trafficObservations(traffic, clock));
   }, [traffic, clock]);
+  useEffect(() => {
+    if (roadEvents) {
+      const observations = ga511RoadEventObservations(roadEvents, clock);
+      emit.current?.(OBSERVATION_PREFIX.roadWorks, observations.filter((item) => item.id.startsWith(OBSERVATION_PREFIX.roadWorks)));
+      emit.current?.(OBSERVATION_PREFIX.roadClosures, observations.filter((item) => item.id.startsWith(OBSERVATION_PREFIX.roadClosures)));
+    }
+  }, [roadEvents, clock]);
   // Selecting one of our camera markers on the globe selects it here (no fetch).
   useEffect(() => {
     if (!catalog || !selectedId?.startsWith(`${OBSERVATION_PREFIX.cameras}${catalog.provider}-`)) return;
@@ -167,12 +180,49 @@ export default function WorldViewPublicTraffic({ center, network, active = false
       if (!c.signal.aborted && requestGeneration === generation.current && active && network) setTrafficMessage(describe(e) + (traffic ? " · previous result kept and marked by age" : ""));
     } finally { if (request.current === c && requestGeneration === generation.current) setBusy(""); }
   };
+  const loadGa511RoadEvents = async () => {
+    if (!active) { setRoadEventsMessage("Public traffic is inactive while this globe view is closed."); return; }
+    if (!network) { setRoadEventsMessage("Enable the WorldView network opt-in before requesting Georgia 511 data."); return; }
+    if (!listing) { setRoadEventsMessage("Load the provider list first to check the Georgia 511 server configuration."); return; }
+    if (listing.roadEvents.status !== "available") {
+      setRoadEventsMessage(listing.roadEvents.status === "not_configured"
+        ? `NOT CONFIGURED · add ${listing.roadEvents.keyEnv} on the server and enable the road-events adapter after reviewing 511GA terms.`
+        : "DISABLED · the server has not enabled the Georgia 511 road-events adapter.");
+      return;
+    }
+    let box;
+    try { box = areaBounds(center, Math.min(radius, GA511_MAX_RADIUS_KM)); }
+    catch { setRoadEventsMessage("Invalid view centre."); return; }
+    const c = begin("road-events");
+    const requestGeneration = generation.current;
+    setRoadEventsMessage(`Requesting Georgia 511 road work and closures for ±${Math.min(radius, GA511_MAX_RADIUS_KM)} km around the view centre…`);
+    try {
+      const result = await fetchGa511RoadEvents(box, fetch, c.signal);
+      if (c.signal.aborted || requestGeneration !== generation.current || !active || !network) return;
+      setRoadEvents(result);
+      setRoadEventsArea({ center: { ...center }, radius: Math.min(radius, GA511_MAX_RADIUS_KM) });
+      setClock(Date.now());
+      setRoadEventsMessage(result.events.length
+        ? `${result.events.length} matching event(s)${result.truncated ? ` shown of ${result.totalInArea} in this area` : ""}${result.cached ? " · served from the relay cache" : ""}.`
+        : `No matching Georgia 511 road-work or closure events were returned for this area. This is not proof that roads are clear.`);
+    } catch (e) {
+      if (!c.signal.aborted && requestGeneration === generation.current && active && network)
+        setRoadEventsMessage(`${describe(e)}${roadEvents ? " · previous result kept; its retrieval time remains visible" : ""}`);
+    } finally { if (request.current === c && requestGeneration === generation.current) setBusy(""); }
+  };
+  const cancelGa511RoadEvents = () => {
+    if (busy !== "road-events") return;
+    generation.current += 1;
+    request.current?.abort(); request.current = null; setBusy("");
+    setRoadEventsMessage("Request cancelled. Any earlier result remains marked by its original retrieval time.");
+  };
   const clearAll = () => {
     generation.current += 1;
-    request.current?.abort(); request.current = null; setBusy(""); dropImage(); setCatalog(null); setCameraId(""); setTraffic(null);
+    request.current?.abort(); request.current = null; setBusy(""); dropImage(); setCatalog(null); setCameraId(""); setTraffic(null); setRoadEvents(null); setRoadEventsArea(null);
     setListing(null); setProviderId("");
     emit.current?.(OBSERVATION_PREFIX.cameras, []); emit.current?.(OBSERVATION_PREFIX.traffic, []);
-    setMessage("Cleared. Markers removed; nothing is retained."); setTrafficMessage("Cleared.");
+    emit.current?.(OBSERVATION_PREFIX.roadWorks, []); emit.current?.(OBSERVATION_PREFIX.roadClosures, []);
+    setMessage("Cleared. Markers removed; nothing is retained."); setTrafficMessage("Cleared."); setRoadEventsMessage("Cleared.");
   };
 
   useEffect(() => {
@@ -185,6 +235,7 @@ export default function WorldViewPublicTraffic({ center, network, active = false
   const catalogAge = catalog ? ageFreshness(catalog.retrievedAt, CATALOG_STALE_MS, clock) : null;
   const imageAge = shown?.kind === "relay" ? ageFreshness(shown.imageTime, SNAPSHOT_STALE_MS, clock) : null;
   const trafficAge = traffic ? ageFreshness(traffic.retrievedAt, CATALOG_STALE_MS, clock) : null;
+  const roadEventsAge = roadEvents ? ageFreshness(roadEvents.retrievedAt, CATALOG_STALE_MS, clock) : null;
 
   return (
     <section className="wv-public-traffic" aria-label="Public traffic cameras and traffic">
@@ -208,7 +259,7 @@ export default function WorldViewPublicTraffic({ center, network, active = false
           {RADII.map((r) => <option key={r} value={r}>±{r} km</option>)}
         </select></label>
         <button onClick={loadCatalog} disabled={!!busy || !provider || provider.status !== "available"}>Load cameras in area</button>
-        <button onClick={clearAll} disabled={!catalog && !traffic}>Clear</button>
+        <button onClick={clearAll} disabled={!catalog && !traffic && !roadEvents && !busy}>Clear</button>
       </div>
       {provider && (
         <p className="wv-pt-meta">
@@ -269,6 +320,43 @@ export default function WorldViewPublicTraffic({ center, network, active = false
                 <li key={i.id}>{i.category}{i.description ? ` — ${i.description}` : ""}{i.roadNumbers ? ` · ${i.roadNumbers}` : ""}{i.delaySeconds !== null ? ` · delay ${Math.round(i.delaySeconds / 60)} min` : ""} · reported {when(i.lastReportTime ?? i.startTime)}</li>
               ))}
             </ul>
+          </>
+        )}
+      </div>
+      <div className="wv-pt-traffic" aria-label="Georgia 511 road work and closures">
+        <h4>Georgia 511 / GDOT road work &amp; closures</h4>
+        <p className="wv-pt-meta">
+          Read-only, manual refresh only. The official feed requires a developer API key and covers Georgia interstates and state routes as stated by 511GA; local-road completeness is not documented.
+          {" "}Coverage and status: {listing?.roadEvents.coverage ?? "Georgia 511 service; see official source documentation."} {listing?.roadEvents.status === "available" ? "Configured on the server." : listing?.roadEvents.status === "not_configured" ? `NOT CONFIGURED · set ${listing.roadEvents.keyEnv} on the server.` : listing?.roadEvents.status === "disabled" ? "DISABLED · the server has not enabled this adapter." : "Load the provider list to check server configuration."}
+          {" "}<a href="https://511ga.org/about/about" target="_blank" rel="noreferrer noopener">511GA coverage</a> · <a href={listing?.roadEvents.keyUrl ?? "https://511ga.org/developers/doc"} target="_blank" rel="noreferrer noopener">API documentation / request a key</a>
+          {" "}Register for a 511GA account, then request a developer API key. Deployment configuration is server-only: <code>UCAS_511GA_API_KEY</code> plus <code>UCAS_511GA_ROAD_EVENTS_ENABLED=1</code>; review current terms first. No open-data license is asserted.
+        </p>
+        <p className="wv-pt-meta">
+          {listing?.roadEvents.attribution ?? "511GA / Georgia Department of Transportation (GDOT)"} · <a href={listing?.roadEvents.termsUrl ?? "https://511ga.org/developers/doc"} target="_blank" rel="noreferrer noopener">developer terms</a> · provider Events API returns a statewide feed; results are filtered to this viewport. Markers use the primary published coordinate.
+        </p>
+        <button onClick={loadGa511RoadEvents} disabled={!!busy || listing?.roadEvents.status !== "available"}>Load Georgia 511 road events in area</button>
+        {busy === "road-events" && <button onClick={cancelGa511RoadEvents}>Cancel road-event request</button>}
+        <p role="status" className="wv-pt-status">{busy === "road-events" ? "Working (road events)… " : ""}{roadEventsMessage}</p>
+        {roadEvents && (
+          <>
+            <p className={`wv-pt-fresh ${roadEventsAge?.freshness}`}>
+              GEORGIA 511 FEED {roadEventsAge?.freshness?.toUpperCase()} · retrieved {when(roadEvents.retrievedAt)} ({formatAge(roadEventsAge?.ageSeconds ?? null)}) · {roadEvents.attribution} · {roadEvents.license} · <a href={roadEvents.sourceUrl} target="_blank" rel="noreferrer noopener">source endpoint (key removed)</a>
+              {roadEvents.cached ? " · relay cache" : ""} · {roadEventsArea ? `requested ±${roadEventsArea.radius} km around ${roadEventsArea.center.lat.toFixed(3)}, ${roadEventsArea.center.lon.toFixed(3)}` : "area not recorded"}
+            </p>
+            <ul className="wv-pt-list">
+              {roadEvents.events.slice(0, 50).map((event) => {
+                const eventTime = event.lastUpdatedAt ?? event.reportedAt;
+                const eventAge = ageFreshness(eventTime, GA511_STALE_MS, clock);
+                const eventTimeLabel = event.lastUpdatedAt ? "last updated" : event.reportedAt ? "reported" : "provider timestamp";
+                return <li key={`${event.type}-${event.id}`}>
+                  <b>{event.type === "roadwork" ? "Road work" : "Road closure"}</b>{event.roadway ? ` · ${event.roadway}` : ""}{event.direction ? ` · ${event.direction}` : ""}{event.fullClosure === true ? " · full closure" : ""}
+                  {event.description ? ` — ${event.description}` : ""}{event.lanesAffected ? ` · ${event.lanesAffected}` : ""} · {eventTimeLabel} {when(eventTime)} ({eventAge.freshness.toUpperCase()})
+                  {event.startAt ? ` · starts ${when(event.startAt)}` : ""}{event.plannedEndAt ? ` · planned end ${when(event.plannedEndAt)}` : ""}
+                </li>;
+              })}
+            </ul>
+            {roadEvents.events.length > 50 && <p className="wv-pt-meta">Showing 50 events in this list; up to 200 returned events may appear on the map. {roadEvents.truncated ? `${roadEvents.totalInArea} matching events were reported; only the nearest 200 were returned.` : ""}</p>}
+            <p className="wv-pt-meta">A missing or empty result does not establish that roads are clear; this source does not document complete local-road coverage. Road-work and closure markers have separate Atlas display filters.</p>
           </>
         )}
       </div>

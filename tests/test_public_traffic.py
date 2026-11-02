@@ -26,7 +26,7 @@ spec.loader.exec_module(pt)
 
 JPEG = b"\xff\xd8\xff\xe0" + b"\x00" * 32 + b"\xff\xd9"
 NOW = 1_793_400_000.0  # 2026-10-30T... fixed test clock
-KEY_ENVS = ("UCAS_WSDOT_ACCESS_CODE", "UCAS_ONTARIO511_API_KEY", "UCAS_511NY_API_KEY", "UCAS_FL511_API_KEY", "UCAS_TOMTOM_API_KEY", pt.TOMTOM_ENABLE_ENV)
+KEY_ENVS = ("UCAS_WSDOT_ACCESS_CODE", "UCAS_ONTARIO511_API_KEY", "UCAS_511NY_API_KEY", "UCAS_FL511_API_KEY", "UCAS_TOMTOM_API_KEY", pt.TOMTOM_ENABLE_ENV, pt.GA511_KEY_ENV, pt.GA511_ENABLE_ENV)
 
 
 class Headers(dict):
@@ -426,6 +426,82 @@ class TomTomTests(RelayTestCase):
         result = self.call(["tomtom"], self.query)
         self.assertIsNone(result["flow"])
         self.assertEqual(result["flowError"], "upstream_error")
+
+
+class Georgia511Tests(RelayTestCase):
+    query = q(west=-85.0, south=32.0, east=-82.0, north=34.0)
+
+    def test_gate_status_and_missing_key_precede_transport(self):
+        os.environ[pt.GA511_KEY_ENV] = "SECRET-GA"
+        opener = self.use({})
+        listing = self.call(["providers"])
+        self.assertEqual(listing["roadEvents"]["status"], "disabled")
+        for value in ("true", "yes", "TRUE", "0", " 1"):
+            os.environ[pt.GA511_ENABLE_ENV] = value
+            self.assertEqual(self.call(["providers"])["roadEvents"]["status"], "disabled")
+            with self.assertRaises(pt.PublicTrafficError) as gated:
+                self.call(["ga511", "events"], self.query)
+            self.assertEqual((gated.exception.status, gated.exception.code), (404, "provider_disabled"))
+        self.assertEqual(opener.seen, [])
+        with self.assertRaises(pt.PublicTrafficError) as ctx:
+            self.call(["ga511", "events"], self.query)
+        self.assertEqual((ctx.exception.status, ctx.exception.code), (404, "provider_disabled"))
+        os.environ[pt.GA511_ENABLE_ENV] = "1"
+        os.environ.pop(pt.GA511_KEY_ENV)
+        listing = self.call(["providers"])
+        self.assertEqual(listing["roadEvents"]["status"], "not_configured")
+        with self.assertRaises(pt.PublicTrafficError) as ctx:
+            self.call(["ga511", "events"], self.query)
+        self.assertEqual((ctx.exception.status, ctx.exception.code), (503, "not_configured"))
+        self.assertEqual(opener.seen, [])
+
+    def test_filters_normalises_and_strips_key_then_caches(self):
+        os.environ[pt.GA511_ENABLE_ENV] = "1"
+        os.environ[pt.GA511_KEY_ENV] = "SECRET-GA"
+        doc = [
+            {"ID": "closure-1", "EventType": "CLOSURES", "Latitude": "33.75", "Longitude": "-84.39",
+             "RoadwayName": " I-75 ", "DirectionOfTravel": "North", "Description": " Lane closed ",
+             "Organization": "GDOT", "LanesAffected": 2, "IsFullClosure": True, "Severity": "Major",
+             "Reported": NOW - 100, "LastUpdated": NOW - 50, "StartDate": NOW - 20, "PlannedEndDate": NOW + 60},
+            {"ID": "work-2", "EventType": "roadwork", "Latitude": 33.8, "Longitude": -84.3, "Description": "works", "Reported": True},
+            {"ID": "incident", "EventType": "accidentsAndIncidents", "Latitude": 33.7, "Longitude": -84.4},
+            {"ID": "far", "EventType": "closures", "Latitude": 36, "Longitude": -84},
+            {"ID": "bad-coord", "EventType": "roadwork", "Latitude": "bad", "Longitude": -84},
+        ]
+        opener = self.use({"https://511ga.org/api/v2/get/event": js(doc)})
+        result = self.call(["ga511", "events"], self.query)
+        self.assertEqual([event["id"] for event in result["events"]], ["work-2", "closure-1"])
+        self.assertIsNone(result["events"][0]["reportedAt"])
+        event = result["events"][1]
+        self.assertEqual(event["type"], "closures")
+        self.assertEqual((event["lat"], event["lon"], event["roadway"], event["fullClosure"]), (33.75, -84.39, "I-75", True))
+        self.assertEqual(event["reportedAt"], "2026-10-30T22:38:20Z")
+        self.assertEqual(result["attribution"], "511GA / Georgia Department of Transportation (GDOT)")
+        self.assertIn("local-road completeness is not documented", result["coverage"])
+        self.assertNotIn("SECRET-GA", json.dumps(result))
+        self.assertEqual(parse_qs(urlsplit(opener.seen[0][0]).query)["key"], ["SECRET-GA"])
+        self.assertEqual(result["sourceUrl"], "https://511ga.org/api/v2/get/event?format=json")
+        again = self.call(["ga511", "events"], self.query)
+        self.assertTrue(again["cached"])
+        self.assertEqual(len(opener.seen), 1)
+
+    def test_bbox_limit_cap_throttle_and_route_method(self):
+        os.environ[pt.GA511_ENABLE_ENV] = "1"
+        os.environ[pt.GA511_KEY_ENV] = "k"
+        with self.assertRaises(pt.PublicTrafficError) as ctx:
+            self.call(["ga511", "events"], q(west=-180, south=-80, east=180, north=80))
+        self.assertEqual(ctx.exception.code, "bbox_too_large")
+        with self.assertRaises(pt.PublicTrafficError) as ctx:
+            self.call(["ga511", "events"], self.query, method="POST")
+        self.assertEqual(ctx.exception.status, 405)
+        rows = [{"ID": f"e-{i}", "EventType": "roadwork", "Latitude": 33.5 + i / 1000, "Longitude": -84.0} for i in range(205)]
+        opener = self.use({"https://511ga.org/api/v2/get/event": js(rows)})
+        result = self.call(["ga511", "events"], self.query)
+        self.assertEqual((len(result["events"]), result["totalInArea"], result["truncated"]), (200, 205, True))
+        with self.assertRaises(pt.PublicTrafficError) as ctx:
+            self.call(["ga511", "events"], q(west=-84.9, south=32, east=-82, north=34))
+        self.assertEqual(ctx.exception.code, "road_events_throttled")
+        self.assertEqual(len(opener.seen), 1)
 
 
 class RouteTests(unittest.TestCase):
