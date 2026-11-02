@@ -44,6 +44,8 @@ import type { LiveOverlay, LiveFeedInput } from "./worldview-livemaps";
 import type { GpsJamGlobeState } from "./worldview-gpsjam";
 import "./worldview-provider-layout.css";
 import { WorldViewAtlasControls } from "./WorldViewAtlasControls";
+import { WorldViewTimeMachine } from "./WorldViewTimeMachine";
+import type { AtlasTimeMachineSnapshot, AtlasTimeMachineSourceSummary } from "./worldview-time-machine";
 import {
   ATLAS_MAP_ZOOM_MAX,
   ATLAS_MAP_ZOOM_MIN,
@@ -104,6 +106,12 @@ type Row = {
   kind: string;
   source: string;
   c: Center;
+};
+type SavedAtlasDisplay = {
+  center: Center;
+  zoom: number;
+  layers: Record<string, boolean>;
+  signalFilters: AtlasSignalFilters;
 };
 const STYLES = ["Standard", "CRT", "NVG", "FLIR", "Noir", "Snow"];
 const fmt = (n: number) => (Number.isFinite(n) ? n.toFixed(3) : "0.000");
@@ -188,6 +196,9 @@ export function WorldView(props: Props) {
     [listening, setListening] = useState(false),
     [tleText, setTleText] = useState(""),
     [passes, setPasses] = useState<ReturnType<typeof predictPasses>>([]);
+  const [timeMachineSnapshot, setTimeMachineSnapshot] = useState<AtlasTimeMachineSnapshot | null>(null);
+  const [timeMachineSourceSummaries, setTimeMachineSourceSummaries] = useState<AtlasTimeMachineSourceSummary[]>([]);
+  const timeMachineReturnView = useRef<SavedAtlasDisplay | null>(null);
   const [observationHistory, setHistory] = useState<WorldObservation[]>([]);
   const [passContext, setPassContext] = useState<{
     lat: number;
@@ -300,7 +311,9 @@ export function WorldView(props: Props) {
       ]),
     [now],
   );
-  const shownRecords = replaying
+  const shownRecords = timeMachineSnapshot
+    ? timeMachineSnapshot.observations
+    : replaying
     ? replayAt(replaySamples, now + timeMs).map((r) => ({
         ...r,
         id: r.id.split("@")[0],
@@ -314,7 +327,7 @@ export function WorldView(props: Props) {
         const raw = { ...input };
         const age = Math.max(clock, Date.now()) - Date.parse(raw.observedAt);
         if (
-          raw.freshness === "fresh" &&
+          !timeMachineSnapshot && raw.freshness === "fresh" &&
           ((raw.source === "adsb.lol" && age > 120000) ||
             (raw.source === "NOAA/NWS weather.gov" &&
               Date.parse(String(raw.properties?.validTo ?? "")) <
@@ -330,7 +343,7 @@ export function WorldView(props: Props) {
           c: raw.point,
         };
       }),
-    [shownRecords, clock],
+    [shownRecords, clock, timeMachineSnapshot],
   );
   const activeRows = useMemo(
     () => rows.filter((r) => layers[r.kind] !== false && isAtlasSignalVisible(r.kind, r.id, signalFilters)),
@@ -375,6 +388,39 @@ export function WorldView(props: Props) {
       if (enabled) { setProviderDockOpen(true); setPublicTrafficOpen(true); }
     }
     if (key === "livecams" && enabled) { setProviderDockOpen(true); setPublicTrafficOpen(true); }
+  };
+  const receiveTimeMachineSourceSummary = (summary: AtlasTimeMachineSourceSummary | null) => {
+    setTimeMachineSourceSummaries((previous) => summary
+      ? [...previous.filter((item) => item.providerId !== summary.providerId), summary]
+      : previous.filter((item) => item.providerId !== "ga511"));
+  };
+  const applyTimeMachineReplay = (snapshot: AtlasTimeMachineSnapshot | null) => {
+    if (snapshot) {
+      if (!timeMachineSnapshot) {
+        timeMachineReturnView.current = { center, zoom, layers, signalFilters };
+      }
+      setTimeMachineSnapshot(snapshot);
+      syncCenter(snapshot.view.center);
+      setZoom(mapZoomToGlobeScale(snapshot.view.zoom));
+      setLayers({ ...snapshot.view.layers });
+      setSignalFilters({ ...snapshot.view.signalFilters });
+      setPlaying(false);
+      setReplaying(false);
+      setPaused(true);
+      setNotice(`HISTORICAL CAPTURE · ${snapshot.capturedAt} · not current provider state`);
+      return;
+    }
+    const restore = timeMachineReturnView.current;
+    setTimeMachineSnapshot(null);
+    timeMachineReturnView.current = null;
+    if (restore) {
+      syncCenter(restore.center);
+      setZoom(restore.zoom);
+      setLayers(restore.layers);
+      setSignalFilters(restore.signalFilters);
+    }
+    setPaused(false);
+    setNotice("ATLAS · returned to currently loaded map state");
   };
   useEffect(() => {
     if ((!playing && !replaying) || paused) return;
@@ -791,8 +837,11 @@ export function WorldView(props: Props) {
     }
   };
   const analystContext = useMemo<AnalystContext>(() => {
+    const analystRecords = timeMachineSnapshot
+      ? rows.map((r) => r.raw)
+      : [...observationHistory, ...rows.map((r) => r.raw)];
     const all = new Map(
-      [...observationHistory, ...rows.map((r) => r.raw)].map((r) => [
+      analystRecords.map((r) => [
         `${r.id}|${r.source}|${r.observedAt}`,
         r,
       ]),
@@ -800,7 +849,7 @@ export function WorldView(props: Props) {
     return {
       records: [...all.values()],
       annotations,
-      providers: providerResults,
+      providers: timeMachineSnapshot ? {} : providerResults,
       passes:
         passContext &&
         passContext.lat === center.lat &&
@@ -816,7 +865,9 @@ export function WorldView(props: Props) {
       center,
       radiusKm: radius,
       visibleLayers: Object.keys(layers).filter((id) => layers[id]),
-      sceneName: replaying ? "Synthetic replay scene" : "SignalWarden scene",
+      sceneName: timeMachineSnapshot
+        ? `Historical capture ${timeMachineSnapshot.capturedAt} · not current`
+        : replaying ? "Synthetic replay scene" : "SignalWarden scene",
       now: clock,
     };
   }, [
@@ -830,6 +881,7 @@ export function WorldView(props: Props) {
     radius,
     layers,
     replaying,
+    timeMachineSnapshot,
     clock,
   ]);
   return (
@@ -885,6 +937,15 @@ export function WorldView(props: Props) {
         filters={signalFilters}
         onToggle={toggleAtlasSignal}
         onOpenSatellite={() => { setProviderDockOpen(true); setBasemapOpen(true); }}
+      />
+      <WorldViewTimeMachine
+        observations={rows.map((row) => row.raw)}
+        providerResults={Object.values(providerResults)}
+        sourceSummaries={timeMachineSourceSummaries}
+        view={{ center: { lat: center.lat, lon: center.lon }, zoom: globeScaleToMapZoom(zoom), layers, signalFilters }}
+        replayedSnapshotId={timeMachineSnapshot?.id ?? null}
+        onReplay={applyTimeMachineReplay}
+        captureDisabled={Boolean(timeMachineSnapshot || replaying)}
       />
       <section className="wv-command">
         <span className="prompt">›</span>
@@ -968,7 +1029,7 @@ export function WorldView(props: Props) {
             <div className="panel-head">
               <span className="wv-label">LAYERS</span>
               <span className="mono">
-                {activeRows.length} / {records.length}
+                {activeRows.length} / {shownRecords.length}
               </span>
             </div>
             {LAYER_IDS.map((key) => (
@@ -1088,7 +1149,7 @@ export function WorldView(props: Props) {
               <button className="wv-sar-toggle" aria-expanded={aisOpen} onClick={() => setAisOpen((open) => !open)}>{aisOpen ? "Close AIS vessel controls" : "Open read-only AIS vessel controls"}</button>
               {aisOpen && <Suspense fallback={<p role="status">Loading AIS controls (no provider requests)…</p>}><WorldViewAis active={globeActive} center={center} onObservations={receiveAis} /></Suspense>}
               <button className="wv-sar-toggle" aria-expanded={publicTrafficOpen} onClick={() => setPublicTrafficOpen((open) => !open)}>{publicTrafficOpen ? "Close public traffic controls" : "Open public traffic cameras and traffic"}</button>
-              {publicTrafficOpen && <Suspense fallback={<p role="status">Loading traffic controls (no provider requests)…</p>}><WorldViewPublicTraffic active={globeActive} center={center} network={network} selectedId={selectedId} onObservations={receivePublicTraffic} /></Suspense>}
+              {publicTrafficOpen && <Suspense fallback={<p role="status">Loading traffic controls (no provider requests)…</p>}><WorldViewPublicTraffic active={globeActive} center={center} network={network} selectedId={selectedId} onObservations={receivePublicTraffic} onSourceSummary={receiveTimeMachineSourceSummary} /></Suspense>}
               <button className="wv-sar-toggle" aria-expanded={hazardsOpen} onClick={() => setHazardsOpen((open) => !open)}>{hazardsOpen ? "Close fire and hazard feeds" : "Open fire and hazard feeds"}</button>
               {hazardsOpen && <Suspense fallback={<p role="status">Loading hazard controls (no provider requests)…</p>}><WorldViewHazards active={globeActive} network={network} bounds={viewportBounds} onResult={receiveHazardResult} onLayer={receiveImageryLayer} onStatus={receiveImageryStatus} /></Suspense>}
               <button className="wv-sar-toggle" aria-expanded={mobilityOpen} onClick={() => setMobilityOpen((open) => !open)}>{mobilityOpen ? "Close transit, street imagery and context" : "Open transit, street imagery and context"}</button>
@@ -1108,7 +1169,7 @@ export function WorldView(props: Props) {
                   label: r.name,
                   name: r.name,
                 })),
-                ...annotations.map((a) => ({
+                ...(timeMachineSnapshot ? [] : annotations).map((a) => ({
                   id: a.id,
                   lat: a.point.lat,
                   lon: a.point.lon,
@@ -1124,17 +1185,17 @@ export function WorldView(props: Props) {
               detection={detection}
               tilt={tilt}
               zoom={zoom}
-              imageryLayers={Object.values(globeImagery)}
-              imageryStatus={imageryStatus}
-              basemap={basemap}
-              oceanOverlay={oceanOverlay}
-              windAirLayer={windAirLayer}
-              liveOverlay={liveOverlay}
-              gpsJam={gpsJam}
-              imageryAois={imageryAoiState.features}
-              selectedImageryAoiId={imageryAoiState.selectedId}
-              aoiDraft={aoiDraft}
-              aoiDrawing={aoiDrawing}
+              imageryLayers={timeMachineSnapshot ? [] : Object.values(globeImagery)}
+              imageryStatus={timeMachineSnapshot ? null : imageryStatus}
+              basemap={timeMachineSnapshot ? null : basemap}
+              oceanOverlay={timeMachineSnapshot ? null : oceanOverlay}
+              windAirLayer={timeMachineSnapshot ? null : windAirLayer}
+              liveOverlay={timeMachineSnapshot ? null : liveOverlay}
+              gpsJam={timeMachineSnapshot ? null : gpsJam}
+              imageryAois={timeMachineSnapshot ? [] : imageryAoiState.features}
+              selectedImageryAoiId={timeMachineSnapshot ? null : imageryAoiState.selectedId}
+              aoiDraft={timeMachineSnapshot ? [] : aoiDraft}
+              aoiDrawing={timeMachineSnapshot ? false : aoiDrawing}
               onAoiPoint={addAoiPoint}
               onViewportChange={receiveViewport}
               now={clock}
@@ -1158,7 +1219,9 @@ export function WorldView(props: Props) {
               <button aria-label="Return to initial map view" onClick={() => { syncCenter(initialAtlasView.center); setZoom(initialAtlasView.globeScale); }}>◎</button>
             </div>
             <div className="synthetic-stamp">
-              {replaying ? "SYNTHETIC REPLAY · " : ""}
+              {timeMachineSnapshot
+                ? `HISTORICAL CAPTURE · NOT CURRENT · ${timeMachineSnapshot.capturedAt} · `
+                : replaying ? "SYNTHETIC REPLAY · " : ""}
               {paused
                 ? "TIMELINE PAUSED"
                 : playing
@@ -1172,6 +1235,7 @@ export function WorldView(props: Props) {
           <div className="timeline">
             <span className="wv-label">DIRECTOR TIMELINE</span>
             <button
+              disabled={Boolean(timeMachineSnapshot)}
               onClick={() => {
                 if (keyframes.length < 2) {
                   setNotice("DIRECTOR · capture two centers before playback");
@@ -1185,12 +1249,13 @@ export function WorldView(props: Props) {
               {playing ? "Stop path" : "Play path"}
             </button>
             <button
-              disabled={!playing && !replaying}
+              disabled={Boolean(timeMachineSnapshot) || (!playing && !replaying)}
               onClick={() => setPaused(!paused)}
             >
               {paused ? "Resume timeline" : "Pause timeline"}
             </button>
             <button
+              disabled={Boolean(timeMachineSnapshot)}
               onClick={() => {
                 setPaused(false);
                 setReplaying(!replaying);
@@ -1199,7 +1264,7 @@ export function WorldView(props: Props) {
             >
               {replaying ? "Stop replay" : "Synthetic replay"}
             </button>
-            <button onClick={addKeyframe}>Capture center</button>
+            <button onClick={addKeyframe} disabled={Boolean(timeMachineSnapshot)}>Capture center</button>
             <input
               type="range"
               min="0"
@@ -1207,6 +1272,7 @@ export function WorldView(props: Props) {
               step="1000"
               value={timeMs}
               aria-label="Replay time"
+              disabled={Boolean(timeMachineSnapshot)}
               onChange={(e) => {
                 const t = Number(e.target.value);
                 setPaused(true);
@@ -1224,6 +1290,12 @@ export function WorldView(props: Props) {
           </div>
         </section>
         <aside className="wv-right">
+          {timeMachineSnapshot && (
+            <div className="wv-panel wv-time-machine-live-disclosure" role="note">
+              <strong>HISTORICAL MAP · LIVE PANELS BELOW</strong>
+              <p>The map markers are an exact captured state. Weather, space, and other side panels remain outside this snapshot and may show current provider context under their existing opt-ins.</p>
+            </div>
+          )}
           <WorldViewSpatial center={center} selected={selected?.raw ?? null} records={shownRecords} />
           <WorldViewWeather active={globeActive} center={center} selected={selected?.raw ?? null} onRecords={setRecords} />
           <Suspense fallback={<p className="muted">Loading space observations panel…</p>}>

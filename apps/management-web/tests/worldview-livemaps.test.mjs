@@ -304,7 +304,7 @@ test("globe overlay: bounded meshes, frame swap reuses meshes, layer change and 
   assert.equal(parent.children.length, 0);
 });
 
-test("sources carry no keys, env reads, or flight-control surface; WorldView mount is a minimal edit", () => {
+test("sources carry no keys, env reads, or flight-control surface; live maps stay outside captured replay", () => {
   for (const file of ["src/worldview-livemaps.ts", "src/WorldViewLiveMaps.tsx", "src/worldview-livemaps-globe.tsx"]) {
     const text = readFileSync(resolve(root, file), "utf8");
     assert.doesNotMatch(text, /[?&](key|token|access_token|apikey)=/i, file);
@@ -314,7 +314,7 @@ test("sources carry no keys, env reads, or flight-control surface; WorldView mou
   const view = readFileSync(resolve(root, "src/WorldView.tsx"), "utf8");
   assert.match(view, /liveMapsOpen && <Suspense/);
   assert.match(view, /<WorldViewLiveMaps active=\{globeActive\} bounds=\{viewportBounds\} center=\{center\} zoom=\{zoom\} onOverlay=\{setLiveOverlay\} feeds=\{liveFeedInput\} \/>/);
-  assert.match(view, /liveOverlay=\{liveOverlay\}/);
+  assert.match(view, /liveOverlay=\{timeMachineSnapshot \? null : liveOverlay\}/);
   const globe = readFileSync(resolve(root, "src/WorldGlobe.tsx"), "utf8");
   assert.match(globe, /liveOverlayLayer\.sync\(p\.liveOverlay\)/);
   assert.match(globe, /liveOverlayLayer\.dispose\(\)/);

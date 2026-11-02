@@ -1,0 +1,162 @@
+.worldview .wv-time-machine {
+  max-width: 1800px;
+  margin: 0 auto 16px;
+  padding: 13px 14px 12px;
+  border: 1px solid rgba(232, 181, 120, 0.34);
+  background: linear-gradient(112deg, rgba(30, 30, 28, 0.96), rgba(9, 20, 24, 0.94));
+  color: #d8e7e2;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.14);
+  font: 11px/1.45 system-ui, sans-serif;
+}
+.worldview .wv-time-machine-head,
+.worldview .wv-time-machine-detail-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.worldview .wv-time-machine-kicker {
+  color: #e6b878;
+  font: 8px/1.3 ui-monospace, monospace;
+  letter-spacing: 0.15em;
+}
+.worldview .wv-time-machine h2 {
+  margin: 3px 0 0;
+  color: #eff6ef;
+  font: 600 16px/1.25 system-ui, sans-serif;
+}
+.worldview .wv-time-machine h3 {
+  margin: 3px 0 0;
+  color: #ecf4ee;
+  font: 600 12px/1.3 system-ui, sans-serif;
+}
+.worldview .wv-time-machine button,
+.worldview .wv-time-machine select {
+  min-width: 0;
+  border: 1px solid rgba(130, 190, 190, 0.35);
+  border-radius: 2px;
+  background: #10262d;
+  color: #e3f1ec;
+  padding: 7px 9px;
+  font: 10px/1.3 system-ui, sans-serif;
+}
+.worldview .wv-time-machine button { cursor: pointer; }
+.worldview .wv-time-machine button:hover:not(:disabled),
+.worldview .wv-time-machine button:focus-visible {
+  border-color: #e6b878;
+  color: #fff;
+  outline: 2px solid rgba(230, 184, 120, 0.25);
+  outline-offset: 1px;
+}
+.worldview .wv-time-machine button:disabled { cursor: not-allowed; opacity: 0.5; }
+.worldview .wv-time-machine .wv-time-machine-capture {
+  border-color: rgba(230, 184, 120, 0.66);
+  background: rgba(230, 184, 120, 0.1);
+  color: #ffdda7;
+  font-weight: 600;
+}
+.worldview .wv-time-machine .wv-time-machine-clear { color: #f2b5a9; }
+.worldview .wv-time-machine-disclosure,
+.worldview .wv-time-machine-empty,
+.worldview .wv-time-machine-status,
+.worldview .wv-time-machine-gap-note {
+  margin: 8px 0;
+  color: #93a9a5;
+  font-size: 10px;
+}
+.worldview .wv-time-machine-status { color: #c4dfd8; }
+.worldview .wv-time-machine-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 7px;
+}
+.worldview .wv-time-machine-controls label {
+  display: grid;
+  min-width: min(250px, 100%);
+  flex: 1 1 210px;
+  gap: 4px;
+  color: #8ea9a5;
+  font-size: 9px;
+}
+.worldview .wv-time-machine-controls select { width: 100%; }
+.worldview .wv-time-machine-capture-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 6px;
+  margin: 9px 0;
+}
+.worldview .wv-time-machine .wv-time-machine-capture-item {
+  display: grid;
+  justify-items: start;
+  gap: 4px;
+  padding: 8px;
+  text-align: left;
+  background: rgba(255, 255, 255, 0.025);
+}
+.worldview .wv-time-machine-capture-item span {
+  color: #e4b477;
+  font: 8px/1.2 ui-monospace, monospace;
+  letter-spacing: 0.12em;
+}
+.worldview .wv-time-machine-capture-item strong {
+  color: #deeeea;
+  font-size: 10px;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+.worldview .wv-time-machine-capture-item small { color: #78939a; font-size: 9px; }
+.worldview .wv-time-machine .wv-time-machine-capture-item.selected {
+  border-color: rgba(230, 184, 120, 0.72);
+  background: rgba(230, 184, 120, 0.09);
+}
+.worldview .wv-time-machine-detail,
+.worldview .wv-time-machine-compare {
+  margin-top: 9px;
+  padding: 9px;
+  border: 1px solid rgba(130, 190, 190, 0.16);
+  background: rgba(0, 0, 0, 0.12);
+}
+.worldview .wv-time-machine-detail-head > span { color: #94aaa5; font-size: 9px; text-align: right; }
+.worldview .wv-time-machine-sources,
+.worldview .wv-time-machine-conflicts,
+.worldview .wv-time-machine-records { margin-top: 9px; }
+.worldview .wv-time-machine-sources > strong,
+.worldview .wv-time-machine-conflicts > strong,
+.worldview .wv-time-machine-records > strong,
+.worldview .wv-time-machine-compare > strong { color: #cfe3dc; font-size: 10px; }
+.worldview .wv-time-machine-sources ul,
+.worldview .wv-time-machine-conflicts ul,
+.worldview .wv-time-machine-records ul,
+.worldview .wv-time-machine-diffs {
+  margin: 5px 0 0;
+  padding-left: 18px;
+  color: #91aaa5;
+}
+.worldview .wv-time-machine-conflicts { color: #ffd19a; }
+.worldview .wv-time-machine-conflicts ul { color: #ddb98c; }
+.worldview .wv-time-machine-records ul {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(340px, 100%), 1fr));
+  gap: 6px 18px;
+  max-height: 300px;
+  overflow: auto;
+}
+.worldview .wv-time-machine-records li { padding: 3px 0; overflow-wrap: anywhere; }
+.worldview .wv-time-machine-records li strong,
+.worldview .wv-time-machine-records li span { display: block; }
+.worldview .wv-time-machine-records li strong { color: #d6e8e1; font-size: 10px; }
+.worldview .wv-time-machine-records li span { color: #839e9b; font-size: 9px; }
+.worldview .wv-time-machine-records li .wv-time-machine-synthetic { color: #dfb979; font-weight: 700; }
+.worldview .wv-time-machine-diff-counts { color: #cce2da; font-size: 10px; }
+.worldview .wv-time-machine-diffs { max-height: 180px; overflow: auto; }
+.worldview .wv-time-machine-diffs b { color: #e3bd81; font: 8px ui-monospace, monospace; }
+@media (max-width: 700px) {
+  .worldview .wv-time-machine { padding: 10px; }
+  .worldview .wv-time-machine-head,
+  .worldview .wv-time-machine-detail-head { align-items: flex-start; flex-direction: column; }
+  .worldview .wv-time-machine-detail-head > span { text-align: left; }
+  .worldview .wv-time-machine-head .wv-time-machine-capture { width: 100%; }
+  .worldview .wv-time-machine-controls > button { flex: 1 1 auto; }
+  .worldview .wv-time-machine-capture-list { grid-template-columns: 1fr; }
+}

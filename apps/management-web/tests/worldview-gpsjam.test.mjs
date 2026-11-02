@@ -253,7 +253,7 @@ test("live data strip lists GPSJAM as a daily (delayed) layer via extraRows", as
   assert.equal(rows[0].status, "delayed");
 });
 
-test("sources: no keys, env reads, storage or control surface; WorldView/WorldGlobe edits are minimal", () => {
+test("sources: no keys, env reads, storage or control surface; GPSJAM stays outside captured replay", () => {
   for (const file of ["src/worldview-gpsjam.ts", "src/WorldViewGpsJam.tsx", "src/worldview-gpsjam-globe.tsx"]) {
     const text = readFileSync(resolve(root, file), "utf8");
     assert.doesNotMatch(text, /[?&](key|token|access_token|apikey)=/i, file);
@@ -264,7 +264,7 @@ test("sources: no keys, env reads, storage or control surface; WorldView/WorldGl
   const view = readFileSync(resolve(root, "src/WorldView.tsx"), "utf8");
   assert.match(view, /const WorldViewGpsJam = lazy\(\(\) => import\("\.\/WorldViewGpsJam"\)\);/);
   assert.match(view, /<WorldViewGpsJam bounds=\{viewportBounds\} onOverlay=\{setGpsJam\} \/>/);
-  assert.match(view, /gpsJam=\{gpsJam\}/);
+  assert.match(view, /gpsJam=\{timeMachineSnapshot \? null : gpsJam\}/);
   const globe = readFileSync(resolve(root, "src/WorldGlobe.tsx"), "utf8");
   assert.match(globe, /gpsJamLayer\.sync\(p\.gpsJam, camera\)/);
   assert.match(globe, /gpsJamLayer\.dispose\(\)/);
