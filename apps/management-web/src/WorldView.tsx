@@ -940,8 +940,8 @@ export function WorldView(props: Props) {
       />
       <WorldViewTimeMachine
         observations={rows.map((row) => row.raw)}
-        providerResults={Object.values(providerResults)}
-        sourceSummaries={timeMachineSourceSummaries}
+        providerResults={timeMachineSnapshot || replaying ? [] : Object.values(providerResults)}
+        sourceSummaries={timeMachineSnapshot?.providerSummaries ?? (replaying ? [] : timeMachineSourceSummaries)}
         view={{ center: { lat: center.lat, lon: center.lon }, zoom: globeScaleToMapZoom(zoom), layers, signalFilters }}
         replayedSnapshotId={timeMachineSnapshot?.id ?? null}
         onReplay={applyTimeMachineReplay}

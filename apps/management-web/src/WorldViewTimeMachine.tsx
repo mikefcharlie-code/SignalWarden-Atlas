@@ -13,6 +13,7 @@ import {
   findAtlasTimeMachineConflicts,
   retainAtlasTimeMachineSnapshots,
 } from "./worldview-time-machine";
+import { buildAtlasSourceEvidence } from "./worldview-source-evidence";
 import "./worldview-time-machine.css";
 
 type Props = Readonly<{
@@ -49,6 +50,12 @@ const additionalSourceTimes = (record: WorldObservation) => {
   ].filter((item): item is string => item !== null).join(" · ");
 };
 const statusFor = (record: WorldObservation) => record.freshness ?? "unknown";
+const conflictValue = (value: unknown) => {
+  try { return (JSON.stringify(value) ?? String(value)).slice(0, 180); }
+  catch { return String(value).slice(0, 180); }
+};
+const conflictDetails = (conflict: { disagreements: Array<{ field: string; values: unknown[] }> }) =>
+  conflict.disagreements.map((item) => `${item.field}: ${item.values.map(conflictValue).join(" vs ")}`).join("; ");
 const descriptionForChange = (change: AtlasTimeMachineChange) => {
   const before = change.before;
   const after = change.after;
@@ -82,6 +89,11 @@ export function WorldViewTimeMachine({
     [before, after],
   );
   const conflicts = inspected ? findAtlasTimeMachineConflicts(inspected.observations) : [];
+  const loadedSources = useMemo(
+    () => buildAtlasSourceEvidence({ observations, providerResults, sourceSummaries }),
+    [observations, providerResults, sourceSummaries],
+  );
+  const loadedConflicts = useMemo(() => findAtlasTimeMachineConflicts(observations), [observations]);
 
   const capture = () => {
     const capturedAt = new Date().toISOString();
@@ -163,6 +175,42 @@ export function WorldViewTimeMachine({
       </div>
       {message && <p className="wv-time-machine-status" role="status">{message}</p>}
 
+      <div className="wv-time-machine-live-evidence" aria-label="Loaded source evidence">
+        <strong>{replayedSnapshotId ? "Captured source evidence · historical" : "Loaded source evidence"}</strong>
+        <p className="wv-time-machine-gap-note">Only already-loaded point records, provider results, and source summaries appear here. Request success is not a trust or completeness test; unknown coverage and missing records are not evidence of clear conditions. Raster, imagery, animated overlays, and camera bytes remain in their provider panels and are not captured.</p>
+        {loadedSources.length === 0 ? (
+          <p className="wv-time-machine-empty">No source status is available to this view. Source state is unknown; no records does not mean no events.</p>
+        ) : (
+          <ul>
+            {loadedSources.map((source) => (
+              <li key={source.providerId}>
+                <b>{source.providerName ?? source.providerId}</b>
+                <span>{source.providerId} · freshness {source.freshness} · data kind {source.dataKind ?? "unknown"} · {source.loadedRecordCount ?? 0} loaded map record(s), {source.observationCount} provider record(s) · retrieved {timeLabel(source.retrievedAt)}</span>
+                <span>Record freshness states: {source.freshnessStates?.join(", ") || "unknown"}</span>
+                <span>Coverage status: {source.coverageStatus ?? "unknown"} · {source.coverage ?? "Unknown / not reported"}</span>
+                <span>Time basis: {source.timeBasis ?? "Not reported"}</span>
+                <span>Attribution: {source.attribution ?? "Not reported"} · license: {source.license ?? "Not reported"}</span>
+                <span>Terms summary: {source.termsText ?? "Not reported"}</span>
+                {source.termsUrl && <span>Terms URL: <a href={source.termsUrl} target="_blank" rel="noreferrer">{source.termsUrl}</a></span>}
+                {source.sourceUrl && <span>Source: <a href={source.sourceUrl} target="_blank" rel="noreferrer">{source.sourceUrl}</a></span>}
+                {source.errorState === "unknown" ? <span>Error state: not reported to this capture.</span> : source.hasError ? <span>Provider error: {source.error ?? "reported; safe details unavailable"}</span> : <span>No provider error was reported; that does not establish data accuracy or completeness.</span>}
+                <span>Known blind spots: {source.knownBlindSpots?.length ? source.knownBlindSpots.join(" · ") : "Not documented in the Atlas source register."}</span>
+                <span>{source.absenceMeaning ?? "Missing records do not establish absence."}</span>
+                {(source.truncated || source.cached) && <span>{source.truncated ? "Result truncated" : ""}{source.cached ? `${source.truncated ? " · " : ""}served from cache` : ""}</span>}
+              </li>
+            ))}
+          </ul>
+        )}
+        {loadedConflicts.length > 0 ? (
+          <div className="wv-time-machine-conflicts" role="note">
+            <strong>Potential data conflicts · same layer/ID only · unresolved</strong>
+            <ul>{loadedConflicts.map((conflict, index) => <li key={`${conflict.layer}:${conflict.id}:${index}`}>{conflict.layer} · {conflict.id} · {conflict.sources.join(" vs ")} — {conflict.reason} · values: {conflictDetails(conflict)}</li>)}</ul>
+          </div>
+        ) : (
+          <p className="wv-time-machine-gap-note">No cross-source data conflict was identified among loaded point records. This is not evidence of provider agreement, accuracy, or coverage.</p>
+        )}
+      </div>
+
       {snapshots.length === 0 ? (
         <p className="wv-time-machine-empty">No captures yet. Capture records already present in the map; empty coverage is never filled with generated history.</p>
       ) : (
@@ -195,17 +243,22 @@ export function WorldViewTimeMachine({
               <p className="wv-time-machine-gap-note">{inspected.coverageGaps.join(" ")}</p>
               {inspected.providerSummaries.length > 0 && (
                 <div className="wv-time-machine-sources">
-                  <strong>Provider results available at capture</strong>
+                  <strong>Source evidence at capture</strong>
                   <ul>
                     {inspected.providerSummaries.map((source) => (
                       <li key={source.providerId}>
                         <b>{source.providerName ?? source.providerId}</b>
-                        <span>{source.providerId} · {source.freshness} · {source.observationCount} record{source.observationCount === 1 ? "" : "s"} · retrieved {timeLabel(source.retrievedAt)}{source.hasError ? " · provider error recorded" : ""}</span>
-                        <span>Coverage: {source.coverage ?? "Not reported"}{source.truncated ? ` · truncated (${source.observationCount} shown${source.totalInArea === null || source.totalInArea === undefined || source.totalInArea <= 0 ? "" : ` of ${source.totalInArea}`} in area)` : ""}{source.cached ? " · relay cache" : ""}</span>
-                        {source.attribution && <span>Attribution: {source.attribution}</span>}
-                        {source.license && <span>License: {source.license}</span>}
-                        {source.termsUrl && <span>Terms: {source.termsUrl}</span>}
+                        <span>{source.providerId} · freshness {source.freshness} · data kind {source.dataKind ?? "unknown"} · {source.loadedRecordCount ?? 0} loaded record(s), {source.observationCount} provider record(s) · retrieved {timeLabel(source.retrievedAt)}</span>
+                        <span>Record freshness states: {source.freshnessStates?.join(", ") || "unknown"}</span>
+                        <span>Coverage status: {source.coverageStatus ?? "unknown"} · {source.coverage ?? "Unknown / not reported"}{source.truncated ? ` · truncated (${source.observationCount} shown${source.totalInArea === null || source.totalInArea === undefined || source.totalInArea <= 0 ? "" : ` of ${source.totalInArea}`} in area)` : ""}{source.cached ? " · relay cache" : ""}</span>
+                        <span>Time basis: {source.timeBasis ?? "Not reported"}</span>
+                        <span>Attribution: {source.attribution ?? "Not reported"} · license: {source.license ?? "Not reported"}</span>
+                        <span>Terms summary: {source.termsText ?? "Not reported"}</span>
+                        {source.termsUrl && <span>Terms URL: {source.termsUrl}</span>}
                         {source.sourceUrl && <span>Source URL: {source.sourceUrl}</span>}
+                        {source.errorState === "unknown" ? <span>Error state: not reported to this capture.</span> : source.hasError ? <span>Provider error: {source.error ?? "reported; safe details unavailable"}</span> : <span>No provider error was reported; this is not a trust or completeness assessment.</span>}
+                        <span>Known blind spots: {source.knownBlindSpots?.length ? source.knownBlindSpots.join(" · ") : "Not documented in the Atlas source register."}</span>
+                        <span>{source.absenceMeaning ?? "Missing records do not establish absence."}</span>
                       </li>
                     ))}
                   </ul>
@@ -213,8 +266,8 @@ export function WorldViewTimeMachine({
               )}
               {conflicts.length > 0 && (
                 <div className="wv-time-machine-conflicts" role="note">
-                  <strong>Potential source conflicts · unresolved</strong>
-                  <ul>{conflicts.map((conflict, index) => <li key={`${conflict.layer}:${conflict.id}:${index}`}>{conflict.layer} · {conflict.id} · {conflict.sources.join(" vs ")} — {conflict.reason}</li>)}</ul>
+                  <strong>Potential source conflicts · same layer/ID only · unresolved</strong>
+                  <ul>{conflicts.map((conflict, index) => <li key={`${conflict.layer}:${conflict.id}:${index}`}>{conflict.layer} · {conflict.id} · {conflict.sources.join(" vs ")} — {conflict.reason} · values: {conflictDetails(conflict)}</li>)}</ul>
                 </div>
               )}
               <div className="wv-time-machine-records">
@@ -270,6 +323,16 @@ export function WorldViewTimeMachine({
                     {comparison.changes.every((change) => change.status === "unchanged") && <li>No record differences in the selected captures.</li>}
                   </ul>
                   {comparison.changes.filter((change) => change.status !== "unchanged").length > 50 && <p>Showing first 50 differences.</p>}
+                  <p className="wv-time-machine-diff-counts">Source context: added {comparison.sourceCounts.added} · removed {comparison.sourceCounts.removed} · changed {comparison.sourceCounts.changed} · unchanged {comparison.sourceCounts.unchanged}</p>
+                  <p className="wv-time-machine-gap-note">Source-context differences describe changes in captured metadata, not provider trustworthiness or event causality. An unreported source is not proof of no change.</p>
+                  <ul className="wv-time-machine-diffs" aria-label="Source context changes">
+                    {comparison.sourceChanges.filter((change) => change.status !== "unchanged").slice(0, 50).map((change, index) => (
+                      <li key={`${change.identity}:${change.status}:${index}`}>
+                        <b>{change.status.toUpperCase()}</b> · {change.identity}{change.changedFields.length ? ` · fields: ${change.changedFields.join(", ")}` : ""}
+                      </li>
+                    ))}
+                    {comparison.sourceChanges.every((change) => change.status === "unchanged") && <li>No source-summary differences found; some sources may not report summaries.</li>}
+                  </ul>
                 </>
               )}
             </div>

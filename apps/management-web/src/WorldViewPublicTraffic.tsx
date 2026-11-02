@@ -30,13 +30,14 @@ const describe = (e: unknown): string => {
   return `FAILED · ${e instanceof Error ? e.message : "request failed"}`;
 };
 const when = (iso: string | null) => (iso ? new Date(iso).toISOString().replace(".000Z", "Z") : "not provided");
-const ga511TimeMachineSummary = (result: Ga511RoadEventsResult | null, hasError = false): AtlasTimeMachineSourceSummary => ({
+const ga511TimeMachineSummary = (result: Ga511RoadEventsResult | null, hasError = false, error?: string | null): AtlasTimeMachineSourceSummary => ({
   providerId: "ga511",
   providerName: result?.providerName ?? "Georgia 511 road events",
   retrievedAt: result?.retrievedAt ?? null,
   freshness: result ? ageFreshness(result.retrievedAt, CATALOG_STALE_MS).freshness : hasError ? "failed" : "unknown",
   observationCount: result?.events.length ?? 0,
   hasError,
+  error: error ?? null,
   coverage: result?.coverage ?? null,
   truncated: result?.truncated ?? null,
   totalInArea: result?.totalInArea ?? null,
@@ -229,7 +230,7 @@ export default function WorldViewPublicTraffic({ center, network, active = false
         : `No matching Georgia 511 road-work or closure events were returned for this area. This is not proof that roads are clear.`);
     } catch (e) {
       if (!c.signal.aborted && requestGeneration === generation.current && active && network)
-        emitSourceSummary.current?.(ga511TimeMachineSummary(roadEvents, true));
+        emitSourceSummary.current?.(ga511TimeMachineSummary(roadEvents, true, e instanceof Error ? e.message : "request failed"));
       if (!c.signal.aborted && requestGeneration === generation.current && active && network)
         setRoadEventsMessage(`${describe(e)}${roadEvents ? " · previous result kept; its retrieval time remains visible" : ""}`);
     } finally { if (request.current === c && requestGeneration === generation.current) setBusy(""); }
