@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { GeoPoint, WorldObservation } from "./worldview-core";
+import type { AtlasTimeMachineSourceSummary } from "./worldview-time-machine";
 import {
   areaBounds, ageFreshness, cameraObservations, coverageIncludes, fetchCatalog, fetchGa511RoadEvents, fetchProviders, fetchSnapshot, fetchTomTom,
   formatAge, ga511RoadEventObservations, hotlinkUrl, trafficObservations, CATALOG_STALE_MS, GA511_MAX_RADIUS_KM, GA511_STALE_MS,
@@ -14,6 +15,7 @@ type Props = Readonly<{
   active?: boolean;
   selectedId?: string | null;
   onObservations?: (prefix: string, observations: WorldObservation[]) => void;
+  onSourceSummary?: (summary: AtlasTimeMachineSourceSummary | null) => void;
 }>;
 type Shown = { kind: "relay"; url: string; imageTime: string | null; imageTimeSource: string; retrievedAt: string; sourceUrl: string }
   | { kind: "hotlink"; url: string; loadedAt: string };
@@ -28,8 +30,24 @@ const describe = (e: unknown): string => {
   return `FAILED · ${e instanceof Error ? e.message : "request failed"}`;
 };
 const when = (iso: string | null) => (iso ? new Date(iso).toISOString().replace(".000Z", "Z") : "not provided");
+const ga511TimeMachineSummary = (result: Ga511RoadEventsResult | null, hasError = false): AtlasTimeMachineSourceSummary => ({
+  providerId: "ga511",
+  providerName: result?.providerName ?? "Georgia 511 road events",
+  retrievedAt: result?.retrievedAt ?? null,
+  freshness: result ? ageFreshness(result.retrievedAt, CATALOG_STALE_MS).freshness : hasError ? "failed" : "unknown",
+  observationCount: result?.events.length ?? 0,
+  hasError,
+  coverage: result?.coverage ?? null,
+  truncated: result?.truncated ?? null,
+  totalInArea: result?.totalInArea ?? null,
+  cached: result?.cached ?? null,
+  sourceUrl: result?.sourceUrl ?? null,
+  attribution: result?.attribution ?? null,
+  license: result?.license ?? null,
+  termsUrl: result?.termsUrl ?? null,
+});
 
-export default function WorldViewPublicTraffic({ center, network, active = false, selectedId, onObservations }: Props) {
+export default function WorldViewPublicTraffic({ center, network, active = false, selectedId, onObservations, onSourceSummary }: Props) {
   const [listing, setListing] = useState<ProviderListing | null>(null);
   const [providerId, setProviderId] = useState("");
   const [radius, setRadius] = useState(25);
@@ -46,6 +64,8 @@ export default function WorldViewPublicTraffic({ center, network, active = false
   const [clock, setClock] = useState(Date.now());
   const emit = useRef(onObservations);
   emit.current = onObservations;
+  const emitSourceSummary = useRef(onSourceSummary);
+  emitSourceSummary.current = onSourceSummary;
   const request = useRef<AbortController | null>(null);
   const generation = useRef(0);
   const blob = useRef("");
@@ -65,6 +85,7 @@ export default function WorldViewPublicTraffic({ center, network, active = false
       emit.current?.(OBSERVATION_PREFIX.traffic, []);
       emit.current?.(OBSERVATION_PREFIX.roadWorks, []);
       emit.current?.(OBSERVATION_PREFIX.roadClosures, []);
+      emitSourceSummary.current?.(null);
     };
   }, []);
   // Re-label markers stale once their catalog / traffic read ages out.
@@ -200,12 +221,15 @@ export default function WorldViewPublicTraffic({ center, network, active = false
       const result = await fetchGa511RoadEvents(box, fetch, c.signal);
       if (c.signal.aborted || requestGeneration !== generation.current || !active || !network) return;
       setRoadEvents(result);
+      emitSourceSummary.current?.(ga511TimeMachineSummary(result));
       setRoadEventsArea({ center: { ...center }, radius: Math.min(radius, GA511_MAX_RADIUS_KM) });
       setClock(Date.now());
       setRoadEventsMessage(result.events.length
         ? `${result.events.length} matching event(s)${result.truncated ? ` shown of ${result.totalInArea} in this area` : ""}${result.cached ? " · served from the relay cache" : ""}.`
         : `No matching Georgia 511 road-work or closure events were returned for this area. This is not proof that roads are clear.`);
     } catch (e) {
+      if (!c.signal.aborted && requestGeneration === generation.current && active && network)
+        emitSourceSummary.current?.(ga511TimeMachineSummary(roadEvents, true));
       if (!c.signal.aborted && requestGeneration === generation.current && active && network)
         setRoadEventsMessage(`${describe(e)}${roadEvents ? " · previous result kept; its retrieval time remains visible" : ""}`);
     } finally { if (request.current === c && requestGeneration === generation.current) setBusy(""); }
@@ -220,6 +244,7 @@ export default function WorldViewPublicTraffic({ center, network, active = false
     generation.current += 1;
     request.current?.abort(); request.current = null; setBusy(""); dropImage(); setCatalog(null); setCameraId(""); setTraffic(null); setRoadEvents(null); setRoadEventsArea(null);
     setListing(null); setProviderId("");
+    emitSourceSummary.current?.(null);
     emit.current?.(OBSERVATION_PREFIX.cameras, []); emit.current?.(OBSERVATION_PREFIX.traffic, []);
     emit.current?.(OBSERVATION_PREFIX.roadWorks, []); emit.current?.(OBSERVATION_PREFIX.roadClosures, []);
     setMessage("Cleared. Markers removed; nothing is retained."); setTrafficMessage("Cleared."); setRoadEventsMessage("Cleared.");
