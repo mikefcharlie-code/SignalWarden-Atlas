@@ -45,6 +45,7 @@ import type { GpsJamGlobeState } from "./worldview-gpsjam";
 import "./worldview-provider-layout.css";
 import { WorldViewAtlasControls } from "./WorldViewAtlasControls";
 import { WorldViewTimeMachine } from "./WorldViewTimeMachine";
+import { WorldViewIncidentGraph } from "./WorldViewIncidentGraph";
 import type { AtlasTimeMachineSnapshot, AtlasTimeMachineSourceSummary } from "./worldview-time-machine";
 import {
   ATLAS_MAP_ZOOM_MAX,
@@ -132,6 +133,8 @@ const download = (name: string, body: string, type = "application/json") => {
   a.click();
   setTimeout(() => URL.revokeObjectURL(u), 0);
 };
+const rowSelectionKey = (record: WorldObservation) =>
+  JSON.stringify([record.source, record.layer, record.id, record.observedAt]);
 
 export function WorldView(props: Props) {
   const [initialAtlasView] = useState(() => resolveAtlasInitialView(typeof window === "undefined" ? "" : window.location.search));
@@ -172,6 +175,7 @@ export function WorldView(props: Props) {
   const [selectedId, setSelectedId] = useState<string | null>(
     props.selectedId ?? null,
   );
+  const [selectedRecordKey, setSelectedRecordKey] = useState<string | null>(null);
   const [style, setStyle] = useState(props.style ?? "Standard"),
     [detection, setDetection] = useState(props.detection ?? false),
     [tilt, setTilt] = useState(props.tilt ?? false),
@@ -364,13 +368,25 @@ export function WorldView(props: Props) {
       .map((raw) => rows.find((r) => r.id === raw.id)!)
       .filter(Boolean);
   }, [activeRows, query, center, rows, radius]);
-  const selected = activeRows.find((r) => r.id === selectedId) ?? filtered[0];
+  const selected = (selectedRecordKey
+    ? rows.find((row) => rowSelectionKey(row.raw) === selectedRecordKey)
+    : undefined) ?? activeRows.find((r) => r.id === selectedId) ?? filtered[0];
+  const incidentGraphObservations = useMemo(() => rows.map((row) => row.raw), [rows]);
+  const incidentGraphProviderResults = useMemo(
+    () => timeMachineSnapshot || replaying ? [] : Object.values(providerResults),
+    [timeMachineSnapshot, replaying, providerResults],
+  );
+  const incidentGraphSourceSummaries = useMemo(
+    () => timeMachineSnapshot?.providerSummaries ?? (replaying ? [] : timeMachineSourceSummaries),
+    [timeMachineSnapshot, replaying, timeMachineSourceSummaries],
+  );
   const counts = countByLayer(activeRows.map((r) => r.raw));
   const syncCenter = (c: Center) => {
     setCenter(c);
     props.onCenter?.(c);
   };
   const syncSelect = (id: string) => {
+    setSelectedRecordKey(null);
     setSelectedId(id);
     props.onSelect?.(id);
   };
@@ -459,6 +475,7 @@ export function WorldView(props: Props) {
       setStyle(s.style === "standard" ? "Standard" : (s.style ?? "Standard"));
       setDetection(!!s.detection);
       setTilt(!!s.tilt);
+      setSelectedRecordKey(null);
       setSelectedId(s.selectedId ?? null);
       setAnnotations(s.annotations);
       setKeyframes(s.keyframes);
@@ -643,6 +660,7 @@ export function WorldView(props: Props) {
           );
           setDetection(!!s.detection);
           setTilt(!!s.tilt);
+          setSelectedRecordKey(null);
           setSelectedId(s.selectedId ?? null);
           setNotice("SCENE · imported validated state");
         }
@@ -1401,6 +1419,19 @@ export function WorldView(props: Props) {
               </p>
             )}
           </div>
+          <WorldViewIncidentGraph
+            observations={incidentGraphObservations}
+            focusRecord={selected?.raw ?? null}
+            providerResults={incidentGraphProviderResults}
+            sourceSummaries={incidentGraphSourceSummaries}
+            historical={Boolean(timeMachineSnapshot)}
+            syntheticReplay={replaying}
+            onInspectRecord={(record) => {
+              syncSelect(record.id);
+              setSelectedRecordKey(rowSelectionKey(record));
+              syncCenter(record.point);
+            }}
+          />
           <div className="wv-panel annotations">
             <div className="panel-head">
               <span className="wv-label">ANNOTATIONS</span>

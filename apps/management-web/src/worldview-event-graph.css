@@ -1,0 +1,55 @@
+.worldview .wv-event-graph { min-width: 0; }
+.worldview .wv-event-graph > p { margin: 0 0 10px; }
+.worldview .wv-event-graph-disclosure,
+.worldview .wv-event-graph-footer,
+.worldview .wv-event-graph-mode,
+.worldview .wv-event-graph-empty,
+.worldview .wv-event-graph-uncertainty,
+.worldview .wv-event-graph-gaps { color: #a9bec2; font-size: 11px; line-height: 1.45; }
+.worldview .wv-event-graph-mode { color: #f0d89b; }
+.worldview .wv-event-graph-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 10px 0; }
+.worldview .wv-event-graph-controls label { display: grid; gap: 4px; color: #91aeb4; font-size: 10px; }
+.worldview .wv-event-graph-controls select { min-width: 0; width: 100%; }
+.worldview .wv-event-graph-summary { display: grid; gap: 5px; margin: 10px 0; padding: 9px; border: 1px solid var(--line); background: rgba(5, 18, 23, .55); font-size: 11px; overflow-wrap: anywhere; }
+.worldview .wv-event-graph-summary span,
+.worldview .wv-event-graph-summary small { color: #9cb3b8; }
+.worldview .wv-event-graph-node-list,
+.worldview .wv-event-graph-edge-list { display: grid; gap: 8px; margin-top: 10px; }
+.worldview .wv-event-graph-node-list h3 { margin: 4px 0 0; color: #b8d0d2; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; }
+.worldview .wv-event-graph-node,
+.worldview .wv-event-graph-edge { min-width: 0; padding: 9px; border: 1px solid rgba(110, 151, 157, .28); background: rgba(3, 14, 19, .42); font-size: 10px; overflow-wrap: anywhere; }
+.worldview .wv-event-graph-edge.is-conflict { border-color: rgba(232, 171, 111, .6); }
+.worldview .wv-event-graph-node-head { display: grid; gap: 4px; }
+.worldview .wv-event-graph-role { color: #70d9ce; font-size: 9px; text-transform: uppercase; letter-spacing: .05em; }
+.worldview .wv-event-graph-node-head strong,
+.worldview .wv-event-graph-edge > strong { color: #e1eceb; }
+.worldview .wv-event-graph-provenance,
+.worldview .wv-event-graph-edge p { margin: 5px 0; color: #b1c5c7; line-height: 1.4; }
+.worldview .wv-event-graph-meta,
+.worldview .wv-event-graph-inspection dl { display: grid; gap: 5px; margin: 7px 0; }
+.worldview .wv-event-graph-meta > div,
+.worldview .wv-event-graph-inspection dl > div { display: grid; grid-template-columns: minmax(82px, .8fr) minmax(0, 1.5fr); gap: 5px; }
+.worldview .wv-event-graph-meta dt,
+.worldview .wv-event-graph-inspection dt { color: #7e9da3; }
+.worldview .wv-event-graph-meta dd,
+.worldview .wv-event-graph-inspection dd { margin: 0; color: #d0dfdf; overflow-wrap: anywhere; }
+.worldview .wv-event-graph-edge-metrics,
+.worldview .wv-event-graph-conflict-fields { color: #9eb6bb !important; font-size: 9px; }
+.worldview .wv-event-graph-conflict-fields { color: #f0c28f !important; }
+.worldview .wv-event-graph-edge-endpoints { display: grid; gap: 6px; margin-top: 7px; }
+.worldview .wv-event-graph-edge-endpoints > div { display: grid; gap: 4px; border-top: 1px solid rgba(110, 151, 157, .18); padding-top: 5px; }
+.worldview .wv-event-graph-edge-endpoints span { color: #9eb6bb; font-size: 9px; }
+.worldview .wv-event-graph-inspection { margin-top: 7px; border-top: 1px solid rgba(110, 151, 157, .18); padding-top: 6px; }
+.worldview .wv-event-graph-inspection summary,
+.worldview .wv-event-graph-gaps summary { color: #85d2cc; cursor: pointer; }
+.worldview .wv-event-graph-inspection button,
+.worldview .wv-event-graph-edge-endpoints button { width: fit-content; margin-top: 5px; }
+.worldview .wv-event-graph-camera-note { color: #f0d89b; }
+.worldview .wv-event-graph-gaps { margin: 8px 0; }
+.worldview .wv-event-graph-gaps ul { padding-left: 18px; }
+.worldview .wv-event-graph-gaps li { margin: 5px 0; }
+@media (max-width: 420px) {
+  .worldview .wv-event-graph-controls { grid-template-columns: 1fr; }
+  .worldview .wv-event-graph-meta > div,
+  .worldview .wv-event-graph-inspection dl > div { grid-template-columns: 1fr; }
+}
