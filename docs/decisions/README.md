@@ -9,3 +9,4 @@ Use sequential files such as `0002-management-stack.md`. Record context, alterna
 - [0005 — Separate civilian operator command gateway](0005-civilian-operator-commands.md) — proposed; operator-authorized bounded civilian runs, disabled by default, no weapon/effector or AI-generated command path.
 - [0006 — Local-first advisory Warden integration](0006-warden-advisory-integration.md) — proposed; deterministic foundations only, no learned weights.
 - [0007 — Warden-NAV navigation-integrity advisory](0007-navigation-integrity-model.md) — proposed, synthetic-only development slice; no operational validation.
+- [0008 — Atlas map-first operations console](0008-atlas-map-first-console.md) — proposed; presentation-only redesign retaining existing provider, provenance, and safety boundaries.

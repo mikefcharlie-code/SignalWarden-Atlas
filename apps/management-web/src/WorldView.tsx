@@ -46,6 +46,8 @@ import "./worldview-provider-layout.css";
 import { WorldViewAtlasControls } from "./WorldViewAtlasControls";
 import { WorldViewTimeMachine } from "./WorldViewTimeMachine";
 import { WorldViewIncidentGraph } from "./WorldViewIncidentGraph";
+import { WorldViewSourceStatus } from "./WorldViewSourceStatus";
+import "./worldview-console.css";
 import type { AtlasTimeMachineSnapshot, AtlasTimeMachineSourceSummary } from "./worldview-time-machine";
 import {
   ATLAS_MAP_ZOOM_MAX,
@@ -903,19 +905,20 @@ export function WorldView(props: Props) {
     clock,
   ]);
   return (
-    <main className={`worldview style-${style.toLowerCase()}`}>
+    <main className={`worldview atlas-console style-${style.toLowerCase()}`}>
+      <a className="atlas-skip-link" href="#atlas-map">Skip to map</a>
       <header className="wv-header">
         <div>
             <span className="wv-kicker">ATLAS / READ-ONLY CONTEXT</span>
-            <h1>
-            SignalWarden Atlas <span>public-context map</span>
-            </h1>
-          <p>Original globe renderer · explicit source opt-in · provenance and freshness stay visible</p>
+            <h1>SignalWarden Atlas</h1>
+          <p>Public-context map · source and freshness stay explicit</p>
         </div>
-        <div className="wv-header-actions">
-          <span className="wv-badge">
-            <i /> READ-ONLY · DEMO + OPT-IN
-          </span>
+        <details className="atlas-header-menu">
+          <summary>
+            <span className="atlas-header-menu-label">View actions</span>
+            <span className="wv-badge"><i /> READ-ONLY · DEMO + OPT-IN</span>
+          </summary>
+          <div className="wv-header-actions">
           <button
             onClick={() => {
               if (!globalContext) {
@@ -943,64 +946,30 @@ export function WorldView(props: Props) {
           <button onClick={exportScene}>Export scene</button>
           <button onClick={exportPack}>Export pack</button>
           <button onClick={() => importFile("scene")}>Import scene</button>
-          <button onClick={() => importFile("pack")}>Import pack</button>
-        </div>
+            <button onClick={() => importFile("pack")}>Import pack</button>
+          </div>
+        </details>
       </header>
       <div className="wv-safety">
-        <b>BOUNDARY</b> Simulation-first context only — not flight-ready or a navigation display. No weapon/effector controls, targeting, arming, or AI-to-command path. Synthetic records remain labeled; provider data retains source, attribution, and freshness.
+        <b>BOUNDARY</b> Simulation-first public context — not flight-ready or a navigation display. No weapon/effector controls, targeting, arming, or AI-to-command path. Synthetic records stay labeled; provider source, attribution, and freshness are retained.
       </div>
-      <WorldViewAtlasControls
-        center={center}
-        mapZoom={globeScaleToMapZoom(zoom)}
-        filters={signalFilters}
-        onToggle={toggleAtlasSignal}
-        onOpenSatellite={() => { setProviderDockOpen(true); setBasemapOpen(true); }}
+      <nav className="atlas-workspace-nav" aria-label="Atlas workspace sections">
+        <a href="#atlas-map" aria-label="Map workspace">Map</a>
+        <a href="#atlas-evidence" aria-label="Evidence graph and scenario lab">Evidence</a>
+        <a href="#atlas-history" aria-label="History and offline field packs">History + packs</a>
+        <a href="#atlas-commands" aria-label="Local commands and optional voice">Commands</a>
+      </nav>
+      <WorldViewSourceStatus
+        observations={incidentGraphObservations}
+        providerResults={incidentGraphProviderResults}
+        sourceSummaries={incidentGraphSourceSummaries}
+        coreFeedOptIn={network}
+        historical={Boolean(timeMachineSnapshot)}
+        syntheticReplay={replaying}
       />
-      <WorldViewTimeMachine
-        observations={rows.map((row) => row.raw)}
-        providerResults={timeMachineSnapshot || replaying ? [] : Object.values(providerResults)}
-        sourceSummaries={timeMachineSnapshot?.providerSummaries ?? (replaying ? [] : timeMachineSourceSummaries)}
-        view={{ center: { lat: center.lat, lon: center.lon }, zoom: globeScaleToMapZoom(zoom), layers, signalFilters }}
-        replayedSnapshotId={timeMachineSnapshot?.id ?? null}
-        onReplay={applyTimeMachineReplay}
-        captureDisabled={Boolean(timeMachineSnapshot || replaying)}
-      />
-      <section className="wv-command">
-        <span className="prompt">›</span>
-        <input
-          value={command}
-          onChange={(e) => setCommand(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && runCommand()}
-          placeholder="search geo:38.9,-77.0 · count · annotate review point"
-          aria-label="Command input"
-        />
-        <label>
-          <input
-            type="checkbox"
-            checked={voiceOptIn}
-            onChange={(e) => {
-              setVoiceOptIn(e.target.checked);
-              if (!e.target.checked) {
-                recognition.current?.stop?.();
-                setListening(false);
-              }
-            }}
-          />{" "}
-          voice opt-in
-        </label>
-        <button onClick={toggleVoice}>
-          {listening ? "Stop mic" : "Voice"}
-        </button>
-        <button className="run" onClick={runCommand}>
-          Run
-        </button>
-        <span role="status" className="command-status">
-          {notice || "LOCAL COMMANDS READY"}
-        </span>
-      </section>
       <div className="wv-layout">
         <aside className="wv-left">
-          <button aria-controls="worldview-provider-dock" aria-expanded={providerDockOpen} onClick={() => setProviderDockOpen((open) => !open)}>{providerDockOpen ? "Hide provider controls" : "Open provider controls"}</button>
+          <button className="atlas-provider-trigger" aria-controls="worldview-provider-dock" aria-expanded={providerDockOpen} onClick={() => setProviderDockOpen((open) => !open)}>{providerDockOpen ? "Hide provider controls" : "Provider tools · opt-in"}</button>
           <div className="wv-panel search-panel">
             <label className="wv-label">SEARCH CONTEXT</label>
             <div className="search-box">
@@ -1043,7 +1012,19 @@ export function WorldView(props: Props) {
                 ))}
             </div>
           </div>
-          <div className="wv-panel">
+          <WorldViewAtlasControls
+            center={center}
+            mapZoom={globeScaleToMapZoom(zoom)}
+            filters={signalFilters}
+            onToggle={toggleAtlasSignal}
+            onOpenSatellite={() => { setProviderDockOpen(true); setBasemapOpen(true); }}
+          />
+          <details className="wv-panel atlas-control-disclosure">
+            <summary>
+              <strong>Map layers</strong>
+              <small>{activeRows.length} visible of {shownRecords.length} records</small>
+            </summary>
+            <div className="atlas-control-disclosure-content">
             <div className="panel-head">
               <span className="wv-label">LAYERS</span>
               <span className="mono">
@@ -1075,10 +1056,16 @@ export function WorldView(props: Props) {
                   props.onDetectionChange?.(e.target.checked);
                 }}
               />
-              <i />
-            </label>
-          </div>
-          <div className="wv-panel">
+                <i />
+              </label>
+            </div>
+          </details>
+          <details className="wv-panel atlas-control-disclosure">
+            <summary>
+              <strong>Display settings</strong>
+              <small>Style · zoom · oblique</small>
+            </summary>
+            <div className="atlas-control-disclosure-content">
             <div className="panel-head">
               <span className="wv-label">DISPLAY</span>
               <button
@@ -1140,7 +1127,8 @@ export function WorldView(props: Props) {
             <p className="fine-print">
               Styles are cosmetic presentation modes, not real sensors.
             </p>
-          </div>
+            </div>
+          </details>
           <div id="worldview-provider-dock" className="wv-provider-dock" role="region" aria-label="Public provider controls" hidden={!providerDockOpen} onKeyDown={(event) => { if (event.key === "Escape") setProviderDockOpen(false); }}>
             <div className="wv-provider-dock-head"><span className="wv-label">PUBLIC PROVIDERS · OPT-IN</span><button aria-label="Hide provider controls" onClick={() => setProviderDockOpen(false)}>Hide controls</button></div>
             <div className="wv-provider-toggles">
@@ -1175,7 +1163,11 @@ export function WorldView(props: Props) {
             </div>
           </div>
         </aside>
-        <section className="wv-stage">
+        <section id="atlas-map" className="wv-stage" aria-label="Atlas map workspace">
+          <div className="atlas-stage-heading">
+            <strong>Map canvas</strong>
+            <span>Reference globe · provider tiles require their own opt-in</span>
+          </div>
           <div className="globe-slot" ref={globeSlotRef}>
             <WorldGlobe
               records={[
@@ -1308,6 +1300,25 @@ export function WorldView(props: Props) {
           </div>
         </section>
         <aside className="wv-right">
+          <details id="atlas-evidence" className="atlas-workspace-disclosure atlas-evidence-disclosure">
+            <summary>
+              <strong>Evidence graph + scenario lab</strong>
+              <small>Loaded records only · no causation or completeness claim</small>
+            </summary>
+            <WorldViewIncidentGraph
+              observations={incidentGraphObservations}
+              focusRecord={selected?.raw ?? null}
+              providerResults={incidentGraphProviderResults}
+              sourceSummaries={incidentGraphSourceSummaries}
+              historical={Boolean(timeMachineSnapshot)}
+              syntheticReplay={replaying}
+              onInspectRecord={(record) => {
+                syncSelect(record.id);
+                setSelectedRecordKey(rowSelectionKey(record));
+                syncCenter(record.point);
+              }}
+            />
+          </details>
           {timeMachineSnapshot && (
             <div className="wv-panel wv-time-machine-live-disclosure" role="note">
               <strong>HISTORICAL MAP · LIVE PANELS BELOW</strong>
@@ -1419,19 +1430,6 @@ export function WorldView(props: Props) {
               </p>
             )}
           </div>
-          <WorldViewIncidentGraph
-            observations={incidentGraphObservations}
-            focusRecord={selected?.raw ?? null}
-            providerResults={incidentGraphProviderResults}
-            sourceSummaries={incidentGraphSourceSummaries}
-            historical={Boolean(timeMachineSnapshot)}
-            syntheticReplay={replaying}
-            onInspectRecord={(record) => {
-              syncSelect(record.id);
-              setSelectedRecordKey(rowSelectionKey(record));
-              syncCenter(record.point);
-            }}
-          />
           <div className="wv-panel annotations">
             <div className="panel-head">
               <span className="wv-label">ANNOTATIONS</span>
@@ -1567,32 +1565,88 @@ export function WorldView(props: Props) {
           </div>
         </aside>
       </div>
-      <WorldViewAnalyst
-        context={analystContext}
-        selectedId={selectedId}
-        onLayer={(layer, visible) =>
-          setLayers((previous) => ({ ...previous, [layer]: visible }))
-        }
-        onNavigate={(place) => {
-          const point = findLocalPlace(place);
-          if (!point) return false;
-          syncCenter(point);
-          return true;
-        }}
-        onDraftAnnotation={(text) =>
-          setAnnotations((previous) =>
-            [
-              ...previous,
-              {
-                id: `analyst-note-${Date.now()}`,
-                text,
-                point: center,
-                createdAt: new Date().toISOString(),
-              },
-            ].slice(-50),
-          )
-        }
-      />
+      <details id="atlas-history" className="atlas-workspace-disclosure atlas-history-disclosure">
+        <summary>
+          <strong>History, source register + offline field packs</strong>
+          <small>Explicit local capture · no refresh or upload</small>
+        </summary>
+        <WorldViewTimeMachine
+          observations={rows.map((row) => row.raw)}
+          providerResults={timeMachineSnapshot || replaying ? [] : Object.values(providerResults)}
+          sourceSummaries={timeMachineSnapshot?.providerSummaries ?? (replaying ? [] : timeMachineSourceSummaries)}
+          view={{ center: { lat: center.lat, lon: center.lon }, zoom: globeScaleToMapZoom(zoom), layers, signalFilters }}
+          replayedSnapshotId={timeMachineSnapshot?.id ?? null}
+          onReplay={applyTimeMachineReplay}
+          captureDisabled={Boolean(timeMachineSnapshot || replaying)}
+        />
+      </details>
+      <details id="atlas-commands" className="atlas-workspace-disclosure atlas-command-disclosure">
+        <summary>
+          <strong>Local commands + optional voice</strong>
+          <small>Local search, counts, filters, and annotations</small>
+        </summary>
+        <section className="wv-command">
+          <span className="prompt">›</span>
+          <input
+            value={command}
+            onChange={(e) => setCommand(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && runCommand()}
+            placeholder="search geo:38.9,-77.0 · count · annotate review point"
+            aria-label="Command input"
+          />
+          <label>
+            <input
+              type="checkbox"
+              checked={voiceOptIn}
+              onChange={(e) => {
+                setVoiceOptIn(e.target.checked);
+                if (!e.target.checked) {
+                  recognition.current?.stop?.();
+                  setListening(false);
+                }
+              }}
+            />{" "}
+            voice opt-in
+          </label>
+          <button onClick={toggleVoice}>
+            {listening ? "Stop mic" : "Voice"}
+          </button>
+          <button className="run" onClick={runCommand}>
+            Run
+          </button>
+          <span role="status" className="command-status">
+            {notice || "LOCAL COMMANDS READY"}
+          </span>
+        </section>
+      </details>
+      <section className="atlas-analyst-workspace">
+        <WorldViewAnalyst
+          context={analystContext}
+          selectedId={selectedId}
+          onLayer={(layer, visible) =>
+            setLayers((previous) => ({ ...previous, [layer]: visible }))
+          }
+          onNavigate={(place) => {
+            const point = findLocalPlace(place);
+            if (!point) return false;
+            syncCenter(point);
+            return true;
+          }}
+          onDraftAnnotation={(text) =>
+            setAnnotations((previous) =>
+              [
+                ...previous,
+                {
+                  id: `analyst-note-${Date.now()}`,
+                  text,
+                  point: center,
+                  createdAt: new Date().toISOString(),
+                },
+              ].slice(-50),
+            )
+          }
+        />
+      </section>
     </main>
   );
 }
