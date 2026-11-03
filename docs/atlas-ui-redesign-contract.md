@@ -18,7 +18,7 @@ Deliver a cohesive, polished map-first operations-console layout for the Atlas p
 ## Scope and assumptions
 - **In scope:** Atlas presentation hierarchy, responsive layout, accessibility of controls, source/freshness/trust-state visibility, focused frontend tests, concise contract/ADR/ledger, browser visual QA, feature branch, and review PR.
 - **Out of scope:** API/provider/model changes, new sources, polling, persistence/retention changes, map-engine replacement, backend/aircraft changes, deployment, and merge.
-- **Assumption:** The current `origin/main` at `e1e34c72846bddbb2b0dde3538404c0880b1789a` is the requested live baseline; the tree was clean before branching. Brand navigation and topbar behavior are unchanged except for an Atlas-route-only <=350px wrap that prevents account controls from being clipped. Revisit if the remote changes materially before the branch is pushed.
+- **Assumption:** The feature branch was cut from `origin/main` at `e1e34c72846bddbb2b0dde3538404c0880b1789a`; `main` remained unchanged at the push/PR checkpoint. Brand navigation and topbar behavior are unchanged except for an Atlas-route-only <=350px wrap that prevents account controls from being clipped.
 
 ## Evidence rules
 - Use repository guidance, current code/tests/docs at the fetched baseline, direct Chromium rendering, and actual executed checks. Do not treat historical documentation test counts as current results.
@@ -57,7 +57,7 @@ Deliver a cohesive, polished map-first operations-console layout for the Atlas p
 | Post-change interactions and network boundary | Skip link focused; action menu, evidence graph, history/offline packs, commands, source details, and provider dock opened; request log empty at all three default viewports | Verified | No provider opt-in was activated and no production provider configuration was inspected. |
 | Post-change frontend checks | `pnpm typecheck && pnpm test && pnpm build` in `apps/management-web`; 456/456 tests passed; build completed | Passed | Vite warns that the existing globe chunk exceeds 500 kB; warning is non-fatal. |
 | Independent implementation review | Two read-only reviewers inspected the feature diff and the final mobile adjustments | No actionable findings | Reviewers lacked a browser; rendered Chromium QA and dimensions were performed by the integrator. |
-| Publication checkpoint | PR #8 against `main`; head `feat/atlas-map-first-redesign` at `ddd5cff9e529184e954530afa5ff2eb47de6d46a` | Open; verified via GitHub connector | Review only; no merge or deployment. |
+| Publication checkpoint | PR #8 against `main`; branch `feat/atlas-map-first-redesign` includes implementation commit `ddd5cff` and the final documentation checkpoint | Open; verified via GitHub connector | Review only; no merge or deployment. |
 
 ## Current state
 - **Completed:** Live baseline fetched; feature branch `feat/atlas-map-first-redesign` created directly from `origin/main`; map-first UI and canonical source-status panel implemented; tests, typecheck, production build, desktop/mobile Chromium QA, two independent reviews, commit, push, and PR creation completed.

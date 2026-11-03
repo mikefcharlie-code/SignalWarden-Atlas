@@ -3,7 +3,7 @@
 ## Project
 - **Name:** SignalWarden Atlas map-first UI redesign
 - **Goal / acceptance criteria:** See [task contract](atlas-ui-redesign-contract.md); map-first responsive interface, canonical visible source states, retained existing capabilities and provider/safety boundaries, tests and visual QA, feature branch plus review PR only.
-- **Last updated:** 2026-11-03T12:26:00-05:00
+- **Last updated:** 2026-11-03T12:27:00-05:00
 - **Current baseline:** `mikefcharlie-code/SignalWarden-Atlas`, `origin/main` at `e1e34c72846bddbb2b0dde3538404c0880b1789a`; branch `feat/atlas-map-first-redesign` was created directly from that commit.
 - **User-authorized scope and side effects:** Read repository; edit UI/tests/docs; run checks and browser QA; push feature branch and open PR.
 - **Restrictions:** No merge/deploy; no API/provider/data changes; no added polling, new provider reads, key exposure, storage, or control/weapon/effector paths.
