@@ -1,0 +1,157 @@
+.worldview .wv-offline-packs {
+  margin-top: 12px;
+  padding: 10px;
+  border: 1px solid rgba(94, 177, 159, 0.38);
+  background: rgba(4, 21, 24, 0.42);
+}
+.worldview .wv-offline-packs-head,
+.worldview .wv-offline-packs-selection-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.worldview .wv-offline-packs h3 {
+  margin: 3px 0 0;
+  color: #e7f2ed;
+  font: 600 13px/1.3 system-ui, sans-serif;
+}
+.worldview .wv-offline-packs button,
+.worldview .wv-offline-packs select,
+.worldview .wv-offline-packs input[type="number"],
+.worldview .wv-offline-packs input[type="file"] {
+  min-width: 0;
+  max-width: 100%;
+  border: 1px solid rgba(130, 190, 190, 0.35);
+  border-radius: 2px;
+  background: #10262d;
+  color: #e3f1ec;
+  padding: 6px 8px;
+  font: 10px/1.3 system-ui, sans-serif;
+}
+.worldview .wv-offline-packs button { cursor: pointer; }
+.worldview .wv-offline-packs button:hover:not(:disabled),
+.worldview .wv-offline-packs button:focus-visible {
+  border-color: #e6b878;
+  color: #fff;
+  outline: 2px solid rgba(230, 184, 120, 0.25);
+  outline-offset: 1px;
+}
+.worldview .wv-offline-packs button:disabled { cursor: not-allowed; opacity: 0.5; }
+.worldview .wv-offline-packs-disclosure,
+.worldview .wv-offline-packs-warning,
+.worldview .wv-offline-packs-gap,
+.worldview .wv-offline-packs-import p,
+.worldview .wv-offline-packs-status {
+  margin: 7px 0;
+  color: #93a9a5;
+  font-size: 10px;
+}
+.worldview .wv-offline-packs-warning {
+  padding: 7px;
+  border-left: 2px solid #d7a96d;
+  background: rgba(215, 169, 109, 0.07);
+  color: #d4bd9b;
+}
+.worldview .wv-offline-packs-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 7px;
+  margin: 8px 0;
+}
+.worldview .wv-offline-packs-controls label,
+.worldview .wv-offline-packs-import label {
+  display: grid;
+  flex: 1 1 150px;
+  min-width: min(140px, 100%);
+  gap: 4px;
+  color: #8ea9a5;
+  font-size: 9px;
+}
+.worldview .wv-offline-packs-controls input[type="number"],
+.worldview .wv-offline-packs-controls select { width: 100%; }
+.worldview .wv-offline-packs-selection,
+.worldview .wv-offline-packs-import,
+.worldview .wv-offline-packs-library,
+.worldview .wv-offline-packs-detail,
+.worldview .wv-offline-packs-comparison {
+  margin-top: 8px;
+  padding: 8px;
+  border: 1px solid rgba(130, 190, 190, 0.17);
+  background: rgba(0, 0, 0, 0.12);
+}
+.worldview .wv-offline-packs-selection-head > strong,
+.worldview .wv-offline-packs-library > strong,
+.worldview .wv-offline-packs-detail > b,
+.worldview .wv-offline-packs-sources > strong,
+.worldview .wv-offline-packs-conflicts > strong,
+.worldview .wv-offline-packs-comparison > strong {
+  color: #cfe3dc;
+  font-size: 10px;
+}
+.worldview .wv-offline-packs-selection ul,
+.worldview .wv-offline-packs-sources ul,
+.worldview .wv-offline-packs-conflicts ul,
+.worldview .wv-offline-packs-gaps,
+.worldview .wv-offline-packs-records,
+.worldview .wv-offline-packs-comparison > ul {
+  margin: 6px 0;
+  padding-left: 18px;
+  color: #91aaa5;
+}
+.worldview .wv-offline-packs-selection ul {
+  max-height: 230px;
+  overflow: auto;
+}
+.worldview .wv-offline-packs-selection li,
+.worldview .wv-offline-packs-sources li,
+.worldview .wv-offline-packs-records li,
+.worldview .wv-offline-packs-gaps li,
+.worldview .wv-offline-packs-conflicts li,
+.worldview .wv-offline-packs-comparison li {
+  padding: 3px 0;
+  overflow-wrap: anywhere;
+}
+.worldview .wv-offline-packs-selection li label {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  color: #d0e1db;
+}
+.worldview .wv-offline-packs-selection li input { flex: 0 0 auto; margin-top: 2px; }
+.worldview .wv-offline-packs-selection li small,
+.worldview .wv-offline-packs-detail > span,
+.worldview .wv-offline-packs-sources li span,
+.worldview .wv-offline-packs-records li span {
+  display: block;
+  color: #839e9b;
+  font-size: 9px;
+}
+.worldview .wv-offline-packs-selection li small { margin-left: 22px; }
+.worldview .wv-offline-packs .wv-offline-packs-save {
+  border-color: rgba(230, 184, 120, 0.66);
+  background: rgba(230, 184, 120, 0.1);
+  color: #ffdda7;
+  font-weight: 600;
+}
+.worldview .wv-offline-packs-status { color: #c4dfd8; }
+.worldview .wv-offline-packs-sources,
+.worldview .wv-offline-packs-conflicts { margin-top: 8px; }
+.worldview .wv-offline-packs-sources a { color: #add5cb; text-decoration: underline; }
+.worldview .wv-offline-packs-conflicts { color: #ffd19a; }
+.worldview .wv-offline-packs-records {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(310px, 100%), 1fr));
+  gap: 4px 16px;
+  max-height: 220px;
+  overflow: auto;
+}
+.worldview .wv-offline-packs-records li b { color: #d6e8e1; font-size: 10px; }
+.worldview .wv-offline-packs-comparison p { color: #91aaa5; font-size: 10px; }
+.worldview .wv-offline-packs-comparison > ul { max-height: 150px; overflow: auto; }
+.worldview .wv-offline-packs-comparison li b { color: #e3bd81; font: 8px ui-monospace, monospace; }
+@media (max-width: 700px) {
+  .worldview .wv-offline-packs-head,
+  .worldview .wv-offline-packs-selection-head { align-items: flex-start; flex-direction: column; }
+}
