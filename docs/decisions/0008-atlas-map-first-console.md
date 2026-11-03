@@ -62,7 +62,7 @@ Prefer **Option A**. Keep the current `WorldView` state owner, renderer, provide
 ## Validation and evidence
 
 - **Performed:** Baseline suite passed 452 tests and typecheck; final `pnpm typecheck`, `pnpm test` (456/456), and `pnpm build` passed. Chromium at 1440×1000, 390×844, and 320×800 put the map at y≈485/577/627 px, matched document width to viewport width, showed a 480px canvas/slot on stacked layouts, and recorded no page errors or external requests. Key disclosures and the provider dock opened; two independent reviewers found no actionable findings.
-- **Pending:** Push and review PR creation. No merge or deployment is authorized; production provider configuration and live provider responses remain unverified.
+- **Published:** [PR #8](https://github.com/mikefcharlie-code/SignalWarden-Atlas/pull/8) is open against `main` from `feat/atlas-map-first-redesign`; implementation commit `ddd5cff9e529184e954530afa5ff2eb47de6d46a` is included. It is not merged or deployed. Production provider configuration and live provider responses remain unverified.
 - **Evidence index:** `docs/atlas-ui-redesign-contract.md`; `docs/worldview-atlas.md`; `docs/worldview-workspace.md`; `docs/worldview-data-sources.md`; `apps/management-web/src/WorldView.tsx`; `apps/management-web/src/worldview-source-evidence.ts`; existing `apps/management-web/tests/worldview-*.test.mjs`.
 
 ## Reconsideration triggers

@@ -13,7 +13,7 @@ Deliver a cohesive, polished map-first operations-console layout for the Atlas p
 | A5 | Provider opt-ins, keys, attribution, manual refresh boundaries, existing explicit exceptions, and default no-network behavior are unchanged; no new polling/fetch path is added. | Existing offline/provider tests, source diff review, Chromium request log with default view. | Pass — zero external requests at all three viewports, including after opening the provider dock; no polling/fetch path added. |
 | A6 | Atlas remains read-only public context: no control, weapon/effector, targeting, arming, or AI-to-command paths are introduced. | Static diff/test review and existing safety checks. | Pass — two independent read-only reviews found no actionable safety or behavior defect. |
 | A7 | Frontend tests, typecheck, and production build pass; a non-author implementation review finds no concrete regression left unresolved. | `pnpm test`, `pnpm typecheck`, `pnpm build`, independent code/design review. | Pass — typecheck passed; 456/456 tests passed; production build succeeded; two independent reviews found no actionable findings. Vite emitted a non-fatal >500 kB chunk warning. |
-| A8 | Work is pushed on a feature branch from live `origin/main`, and a review PR is opened without merge/deploy. | Verify GitHub branch/PR URL and target/base; report exact result. | Pending |
+| A8 | Work is pushed on a feature branch from live `origin/main`, and a review PR is opened without merge/deploy. | Verify GitHub branch/PR URL and target/base; report exact result. | Pass — [PR #8](https://github.com/mikefcharlie-code/SignalWarden-Atlas/pull/8) is open against `main` from `feat/atlas-map-first-redesign`; implementation commit `ddd5cff` is included; not merged or deployed. |
 
 ## Scope and assumptions
 - **In scope:** Atlas presentation hierarchy, responsive layout, accessibility of controls, source/freshness/trust-state visibility, focused frontend tests, concise contract/ADR/ledger, browser visual QA, feature branch, and review PR.
@@ -51,14 +51,15 @@ Deliver a cohesive, polished map-first operations-console layout for the Atlas p
 |---|---|---|---|
 | Live baseline and clean branch point | `origin/main` fetched 2026-11-03; commit `e1e34c72846bddbb2b0dde3538404c0880b1789a`; `git status` clean before branch | Verified | Remote can advance after fetch. |
 | Existing capabilities/contracts | `docs/worldview-atlas.md`, `docs/worldview-workspace.md`, `docs/worldview-data-sources.md`; `src/WorldView.tsx` and existing Atlas tests | Verified from repository | Production provider configuration is not verified and is out of scope. |
-| Pre-change frontend baseline | `apps/management-web`: `pnpm test` (452 pass, 0 fail), `pnpm typecheck` (exit 0) | Passed | Baseline only; post-change checks remain pending. |
+| Pre-change frontend baseline | `apps/management-web`: `pnpm test` (452 pass, 0 fail), `pnpm typecheck` (exit 0) | Passed | Baseline only; final post-change results are recorded below. |
 | Pre-change rendered layout | Chromium 1440×1000 via Playwright, default `/worldview`; map begins around y=1,595 px; 0 page errors, 0 external requests | Verified | Baseline render only. |
 | Post-change responsive layout | Chromium/Playwright `/worldview` at 1440×1000, 390×844, and 320×800; map y≈485/577/627 px; document width exactly matched each viewport; globe slot and canvas matched at 480 px on stacked views | Verified | Local synthetic/offline view; screenshots are in `/workspace/atlas-redesign-final-desktop.png`, `/workspace/atlas-redesign-final-mobile.png`, and `/workspace/atlas-redesign-final-narrow.png`. |
 | Post-change interactions and network boundary | Skip link focused; action menu, evidence graph, history/offline packs, commands, source details, and provider dock opened; request log empty at all three default viewports | Verified | No provider opt-in was activated and no production provider configuration was inspected. |
 | Post-change frontend checks | `pnpm typecheck && pnpm test && pnpm build` in `apps/management-web`; 456/456 tests passed; build completed | Passed | Vite warns that the existing globe chunk exceeds 500 kB; warning is non-fatal. |
 | Independent implementation review | Two read-only reviewers inspected the feature diff and the final mobile adjustments | No actionable findings | Reviewers lacked a browser; rendered Chromium QA and dimensions were performed by the integrator. |
+| Publication checkpoint | PR #8 against `main`; head `feat/atlas-map-first-redesign` at `ddd5cff9e529184e954530afa5ff2eb47de6d46a` | Open; verified via GitHub connector | Review only; no merge or deployment. |
 
 ## Current state
-- **Completed:** Live baseline fetched; clean feature branch `feat/atlas-map-first-redesign` created from `origin/main`; map-first UI and canonical source-status panel implemented; tests, typecheck, production build, desktop/mobile Chromium QA, and two independent reviews completed.
-- **Open blockers / unknowns:** None. Feature branch commit/push and review PR remain; merge and deployment are not authorized.
-- **Next action:** Commit the scoped changes, push the feature branch with the GitHub connector, and open a review PR against `main`.
+- **Completed:** Live baseline fetched; feature branch `feat/atlas-map-first-redesign` created directly from `origin/main`; map-first UI and canonical source-status panel implemented; tests, typecheck, production build, desktop/mobile Chromium QA, two independent reviews, commit, push, and PR creation completed.
+- **Open blockers / unknowns:** None. PR #8 is open for review; merge and deployment remain unauthorized.
+- **Next action:** Await maintainer review; do not merge or deploy.
