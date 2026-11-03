@@ -1,10 +1,10 @@
 import {
   validateObservation,
-  type Freshness,
   type ProviderResult,
   type WorldObservation,
 } from "./worldview-core";
 import type { AtlasSignalFilters } from "./worldview-atlas";
+import { buildAtlasSourceEvidence, type AtlasSourceEvidence } from "./worldview-source-evidence";
 
 export const MAX_ATLAS_TIME_MACHINE_SNAPSHOTS = 10;
 export const MAX_ATLAS_TIME_MACHINE_OBSERVATIONS = 5_000;
@@ -17,22 +17,7 @@ export interface AtlasTimeMachineView {
   signalFilters: AtlasSignalFilters;
 }
 
-export interface AtlasTimeMachineSourceSummary {
-  providerId: string;
-  providerName?: string;
-  retrievedAt: string | null;
-  freshness: Freshness | "unknown";
-  observationCount: number;
-  hasError: boolean;
-  coverage?: string | null;
-  truncated?: boolean | null;
-  totalInArea?: number | null;
-  cached?: boolean | null;
-  sourceUrl?: string | null;
-  attribution?: string | null;
-  license?: string | null;
-  termsUrl?: string | null;
-}
+export type AtlasTimeMachineSourceSummary = AtlasSourceEvidence;
 export type AtlasTimeMachineProviderSummary = AtlasTimeMachineSourceSummary;
 
 export interface AtlasTimeMachineSnapshot {
@@ -60,10 +45,21 @@ export interface AtlasTimeMachineComparisonEntry {
   changedFields: string[];
 }
 
+export interface AtlasTimeMachineSourceChange {
+  key: string;
+  identity: string;
+  status: AtlasTimeMachineComparisonStatus;
+  before?: AtlasTimeMachineProviderSummary;
+  after?: AtlasTimeMachineProviderSummary;
+  changedFields: string[];
+}
+
 export interface AtlasTimeMachineComparison {
   entries: AtlasTimeMachineComparisonEntry[];
   changes: AtlasTimeMachineComparisonEntry[];
   counts: Record<AtlasTimeMachineComparisonStatus, number>;
+  sourceChanges: AtlasTimeMachineSourceChange[];
+  sourceCounts: Record<AtlasTimeMachineComparisonStatus, number>;
 }
 export type AtlasTimeMachineChange = AtlasTimeMachineComparisonEntry;
 
@@ -177,8 +173,6 @@ export function createAtlasTimeMachineSnapshot(input: {
     for (const observation of input.observations) {
       if (validateObservation(observation)) {
         observations.push(cloneObservation(observation));
-        if (typeof observation.properties?.coverage !== "string")
-          coverageGaps.push(`Coverage not reported: ${observation.source}`);
         if (observation.properties?.truncated === true)
           coverageGaps.push(`Source result reported truncation: ${observation.source}`);
       }
@@ -190,34 +184,24 @@ export function createAtlasTimeMachineSnapshot(input: {
   if (observations.length > MAX_ATLAS_TIME_MACHINE_OBSERVATIONS)
     throw new Error(`Atlas time-machine observation cap exceeded: ${MAX_ATLAS_TIME_MACHINE_OBSERVATIONS}`);
 
-  const providerSummaries = new Map<string, AtlasTimeMachineProviderSummary>();
-  const providerEntries = Array.isArray(input.providerResults)
-    ? input.providerResults.map((result) => [result.providerId, result] as const)
-    : Object.entries(input.providerResults ?? {});
-  for (const [providerId, result] of providerEntries.sort(([a], [b]) => a.localeCompare(b))) {
-    const retrievedAt = typeof result?.retrievedAt === "string" && Number.isFinite(Date.parse(result.retrievedAt)) ? result.retrievedAt : null;
-    const freshness: Freshness | "unknown" = result?.freshness ?? "unknown";
-    const hasError = freshness === "failed" || (typeof result?.error === "string" && result.error.length > 0);
-    const summary = {
-      providerId,
-      retrievedAt,
-      freshness,
-      observationCount: Array.isArray(result?.observations) ? result.observations.length : 0,
-      hasError,
-    } satisfies AtlasTimeMachineProviderSummary;
-    providerSummaries.set(providerId, summary);
-    if (hasError) coverageGaps.push(`Provider error recorded: ${providerId}`);
-    if (!hasError && !result?.observations?.length) coverageGaps.push(`Empty source result: ${providerId}`);
-    coverageGaps.push(`Coverage not reported: ${providerId}`);
-  }
-  for (const summary of input.sourceSummaries ?? []) {
-    if (!summary || typeof summary.providerId !== "string" || !summary.providerId) continue;
-    const hasError = summary.hasError || summary.freshness === "failed";
-    providerSummaries.set(summary.providerId, { ...summary, hasError });
-    if (hasError) coverageGaps.push(`Provider error recorded: ${summary.providerId}`);
-    if (summary.observationCount === 0 && !hasError) coverageGaps.push(`Empty source result: ${summary.providerId}`);
-    if (!summary.coverage) coverageGaps.push(`Coverage not reported: ${summary.providerId}`);
-    if (summary.truncated) coverageGaps.push(`Source result reported truncation: ${summary.providerId}${summary.totalInArea === null || summary.totalInArea === undefined || summary.totalInArea <= 0 ? "" : ` (${summary.observationCount} shown of ${summary.totalInArea} in area)`}`);
+  const providerSummaries = buildAtlasSourceEvidence({
+    observations,
+    providerResults: input.providerResults,
+    sourceSummaries: input.sourceSummaries,
+  });
+  for (const summary of providerSummaries) {
+    const coverageStatus = summary.coverageStatus ?? (summary.coverage ? "reported" : "unknown");
+    if (summary.hasError) coverageGaps.push(`Provider error recorded: ${summary.providerId}`);
+    if (!summary.hasError && coverageStatus !== "out_of_coverage" && summary.observationCount === 0 && summary.loadedRecordCount === 0)
+      coverageGaps.push(`Empty source result: ${summary.providerId}`);
+    if (coverageStatus === "unknown")
+      coverageGaps.push(`Coverage not reported: ${summary.providerId}`);
+    else if (coverageStatus === "partial")
+      coverageGaps.push(`Partial source coverage: ${summary.providerId}`);
+    else if (coverageStatus === "out_of_coverage")
+      coverageGaps.push(`Source reports out of coverage: ${summary.providerId}`);
+    if (summary.truncated)
+      coverageGaps.push(`Source result reported truncation: ${summary.providerId}${summary.totalInArea === null || summary.totalInArea === undefined || summary.totalInArea <= 0 ? "" : ` (${summary.observationCount} shown of ${summary.totalInArea} in area)`}`);
   }
   const snapshot: AtlasTimeMachineSnapshot = {
     schemaVersion: 1,
@@ -225,7 +209,7 @@ export function createAtlasTimeMachineSnapshot(input: {
     capturedAt: input.capturedAt,
     view: cloneView(input.view),
     observations,
-    providerSummaries: [...providerSummaries.values()].sort((a, b) => a.providerId.localeCompare(b.providerId)),
+    providerSummaries,
     coverageGaps: [...new Set(coverageGaps)],
   };
   assertPayload(snapshot);
@@ -259,8 +243,29 @@ export function compareAtlasTimeMachineSnapshots(
   });
   const counts = { added: 0, removed: 0, changed: 0, unchanged: 0 };
   for (const entry of entries) counts[entry.status]++;
-  return { entries, changes: entries, counts };
+
+  const leftSources = new Map(before.providerSummaries.map((summary) => [summary.providerId, summary]));
+  const rightSources = new Map(after.providerSummaries.map((summary) => [summary.providerId, summary]));
+  const sourceKeys = [...new Set([...leftSources.keys(), ...rightSources.keys()])].sort();
+  const sourceChanges = sourceKeys.map((key): AtlasTimeMachineSourceChange => {
+    const a = leftSources.get(key), b = rightSources.get(key);
+    if (!a) return { key, identity: key, status: "added", after: b, changedFields: [] };
+    if (!b) return { key, identity: key, status: "removed", before: a, changedFields: [] };
+    const fields = new Set([...Object.keys(a), ...Object.keys(b)]);
+    const changed = [...fields]
+      .filter((field) => stableJson((a as unknown as Record<string, unknown>)[field]) !== stableJson((b as unknown as Record<string, unknown>)[field]))
+      .sort();
+    return { key, identity: key, status: changed.length ? "changed" : "unchanged", before: a, after: b, changedFields: changed };
+  });
+  const sourceCounts = { added: 0, removed: 0, changed: 0, unchanged: 0 };
+  for (const change of sourceChanges) sourceCounts[change.status]++;
+  return { entries, changes: entries, counts, sourceChanges, sourceCounts };
 }
+
+const NON_EVIDENCE_PROPERTY_KEYS = new Set([
+  "source", "provider", "freshness", "stale", "dataKind", "error", "errorState", "attribution", "license", "terms", "termsUrl", "sourceUrl", "retrievedAt", "providerTimestamp",
+  "freshnessBasis", "sourceTimeBasis", "coverage", "coverageStatus", "truncated", "cached", "verification", "disclosure", "knownBlindSpots", "absenceMeaning",
+]);
 
 export function findAtlasTimeMachineConflicts(
   observations: readonly WorldObservation[],
@@ -278,21 +283,29 @@ export function findAtlasTimeMachineConflicts(
     const bySource = [...new Map(group.map((item) => [item.source, item])).values()].sort((a, b) => a.source.localeCompare(b.source));
     if (bySource.length < 2) continue;
     const [first] = bySource;
-    const fields = [...new Set(group.flatMap((item) => Object.keys(item)))].filter((field) => field !== "source").sort();
-    const disagreements = fields
-      .map((field) => {
-        const values = bySource.map((item) => {
-          const present = own(item, field);
-          return present
-            ? { present: true, value: (item as unknown as Record<string, unknown>)[field] }
-            : { present: false };
-        });
-        const unique = [...new Map(values.map((value) => [stableJson(value), value])).values()];
-        return { field, values: unique };
-      })
-      .filter((item) => item.values.length > 1);
+    const candidateFields = new Set([
+      "point",
+      ...(bySource.some((item) => item.confidence !== undefined) ? ["confidence"] : []),
+      ...bySource.flatMap((item) => Object.keys(item.properties ?? {})
+        .filter((field) => !NON_EVIDENCE_PROPERTY_KEYS.has(field))
+        .map((field) => `properties.${field}`)),
+    ]);
+    const disagreements = [...candidateFields].sort().flatMap((field) => {
+      const values = bySource.flatMap((item) => {
+        if (field.startsWith("properties.")) {
+          const property = field.slice("properties.".length);
+          return own(item.properties ?? {}, property)
+            ? [{ source: item.source, value: item.properties?.[property] }]
+            : [];
+        }
+        return own(item, field) ? [{ source: item.source, value: (item as unknown as Record<string, unknown>)[field] }] : [];
+      });
+      if (new Set(values.map((item) => item.source)).size < 2) return [];
+      const unique = [...new Map(values.map((item) => [stableJson(item.value), item.value])).values()];
+      return unique.length > 1 ? [{ field, values: unique }] : [];
+    });
     if (disagreements.length)
-      conflicts.push({ key, layer: first.layer, id: first.id, sources: bySource.map((item) => item.source), reason: `Sources disagree on ${disagreements.map((item) => item.field).join(", ")}; no winner selected`, disagreements });
+      conflicts.push({ key, layer: first.layer, id: first.id, sources: bySource.map((item) => item.source), reason: `Sources disagree on data-bearing fields ${disagreements.map((item) => item.field).join(", ")}; freshness and provenance metadata are not treated as conflicts, and no winner is selected`, disagreements });
   }
   return conflicts;
 }

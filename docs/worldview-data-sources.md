@@ -12,6 +12,18 @@ This is the source-control checklist for the SignalWarden Mark 2 / Atlas boundar
 - Attribution must remain visible in the detail/source surface and any future export or recording mode where the provider requires it.
 - Synthetic demo observations and user-authorized validated JSON packs are not live-provider data. Importing a pack does not verify provenance, licensing or freshness.
 
+## Implemented Atlas trust-and-coverage layer
+
+Atlas's visible **Loaded source evidence** list is assembled from already-loaded point observations, provider results, and explicit source summaries supplied by a panel. It is not a second fetch and does not manufacture a provider summary. A provider that emits no summary is not documented or displayed as having a complete one; absent metadata is shown as **unknown/not reported**. The source entry can expose provider identity, record counts, retrieval time, freshness, data kind, coverage status and description, known blind spots, time basis, error state, truncation/cache state, attribution, license, terms URL, and source URL. URLs are safety-checked and error messages are sanitized before display.
+
+Freshness and data kind are intentionally independent. Freshness states include fresh, stale, failed, synthetic, unknown, and mixed. Data kinds include observation, reported event, forecast, modelled, delayed, synthetic, geometric estimate, imagery, and unknown. Thus a forecast is not presented as a current observation, delayed data is not treated as fresh merely because a request succeeded, and synthetic or geometric-estimate records are not provider evidence. Imagery/raster/animated overlays and camera image bytes are not converted into this shared point-evidence list; they remain in provider panels.
+
+Coverage is explicit where the loaded record, provider result, or source summary reports it, with reported/partial/out-of-coverage/unknown status and known blind spots where available. A successful request or a clear/no-error result is only an error status; it is not a trust or completeness assessment. Missing records, empty results, absent summaries, unknown coverage, or a source not being reported do not establish clear conditions, absence, provider agreement, or a complete feed. The evidence also preserves the source time basis separately from retrieval time and Atlas capture time.
+
+The user-initiated time-machine capture is page-memory-only and bounded: at most 10 snapshots, 5,000 observations per snapshot, and a 2 MB payload. It captures already-loaded point observations, available provider-result summaries, explicit source summaries, and view/filter state. It does not poll, refresh, upload, add network access, or add durable storage; captures clear on reload or the user’s clear action. Imagery, raster, animated overlays, basemap tiles, camera bytes, and provider-only state outside shared observations/summaries remain excluded and stay in their provider panels. No provider opt-in, keys, attribution, terms, or cancellation gates are changed.
+
+Snapshot comparison matches observations by source/layer/ID and reports dataset differences separately from source-context summary changes. Source-context changes are metadata differences only; they do not establish causality or provider trustworthiness, and an unreported source is not evidence that nothing changed. Cross-source conflict detection is unresolved and only groups matching layer/ID records from different sources. It compares overlapping data-bearing values (including point, confidence when present, and non-metadata properties), while excluding freshness, retrieval/provider timestamps, coverage, truncation/cache, attribution, license, terms, source URL, and related provenance metadata from conflict fields. No winner is selected. No detected conflict does not prove agreement, accuracy, or completeness.
+
 ## Provider / data-source matrix
 
 | Provider or source | Use / layer | Terms or license evidence | Required attribution | Key/config | Limits and caveats | Mark 2 / Atlas status |
@@ -61,6 +73,7 @@ This is the source-control checklist for the SignalWarden Mark 2 / Atlas boundar
 - **Datacenters and dams are also not bundled.** Their upstream snapshots are ODbL-derived and can only be added later with attribution/share-alike compliance, or supplied by an authorized imported pack with its own provenance.
 - “Future `*_API_KEY`” entries above are planning labels only. PR18 has no configured WorldView API credentials and no adapter that reads those proposed variables. Do not add secrets to scene URLs, observation packs or client bundles.
 - Provider status must distinguish **fresh**, **stale**, **failed**, **synthetic** and **unknown**. A marker, imported pack, event report or coarse camera pose is not proof of an event, identity, plate, location or threat.
+- A source result being empty, a request succeeding, or a source summary being absent is not a clear-condition or completeness signal. Unknown coverage and unknown metadata must remain unknown/not reported.
 
 ## Current PR18 implementation
 
