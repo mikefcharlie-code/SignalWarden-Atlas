@@ -15,6 +15,7 @@ import {
 } from "./worldview-time-machine";
 import { buildAtlasSourceEvidence } from "./worldview-source-evidence";
 import "./worldview-time-machine.css";
+import { WorldViewOfflinePacks } from "./WorldViewOfflinePacks";
 
 type Props = Readonly<{
   observations: readonly WorldObservation[];
@@ -339,6 +340,13 @@ export function WorldViewTimeMachine({
           )}
         </>
       )}
+      <WorldViewOfflinePacks
+        observations={observations}
+        providerResults={providerResults}
+        sourceSummaries={sourceSummaries}
+        view={view}
+        disabled={captureDisabled}
+      />
     </section>
   );
 }
