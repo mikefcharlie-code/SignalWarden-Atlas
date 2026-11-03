@@ -1,0 +1,570 @@
+.worldview.atlas-console {
+  --line: rgba(133, 167, 175, 0.2);
+  --teal: #79ddd2;
+  --amber: #f4c27c;
+  --panel: #111f26;
+  --panel-raised: #172932;
+  --muted: #9aadb2;
+  box-sizing: border-box;
+  max-width: none;
+  padding: 12px 16px 30px;
+  color: #e4edf0;
+  font: 13px/1.45 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.worldview.atlas-console *,
+.worldview.atlas-console *::before,
+.worldview.atlas-console *::after { box-sizing: border-box; }
+.worldview.atlas-console :where(button, input, select, textarea) { font: inherit; }
+.worldview.atlas-console :where(button, a, input, select, textarea, summary):focus-visible {
+  outline: 2px solid #ffd18e;
+  outline-offset: 2px;
+}
+.worldview.atlas-console .wv-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 0 auto 10px;
+  padding: 7px 0 12px;
+  border-bottom: 1px solid var(--line);
+}
+.worldview.atlas-console .wv-kicker {
+  color: #85d9d0;
+  font: 10px/1.2 ui-monospace, SFMono-Regular, monospace;
+  letter-spacing: 0.15em;
+}
+.worldview.atlas-console .wv-header h1 {
+  margin: 4px 0 3px;
+  color: #f2f6f7;
+  font: 650 clamp(23px, 2.3vw, 31px)/1.1 system-ui, sans-serif;
+  letter-spacing: -0.035em;
+}
+.worldview.atlas-console .wv-header h1 span { color: #a8b8bd; font-weight: 430; }
+.worldview.atlas-console .wv-header p { margin: 0; color: #a3b5ba; font-size: 12px; }
+.worldview.atlas-console .wv-header-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin: 0;
+}
+.worldview.atlas-console .wv-header-actions button,
+.worldview.atlas-console .atlas-provider-trigger {
+  min-height: 34px;
+  border: 1px solid rgba(130, 173, 180, 0.28);
+  border-radius: 8px;
+  padding: 7px 9px;
+  background: #162831;
+  color: #dce9eb;
+  font: 11px/1.2 system-ui, sans-serif;
+  cursor: pointer;
+}
+.worldview.atlas-console .wv-header-actions button:hover,
+.worldview.atlas-console .atlas-provider-trigger:hover { border-color: #72cfc7; background: #1b343e; }
+.worldview.atlas-console .wv-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  border: 1px solid rgba(125, 209, 176, 0.28);
+  border-radius: 999px;
+  padding: 5px 9px;
+  color: #b8e4d3;
+  background: rgba(54, 123, 95, 0.12);
+  font: 9px/1.2 ui-monospace, SFMono-Regular, monospace;
+  white-space: nowrap;
+}
+.worldview.atlas-console .wv-badge i { width: 7px; height: 7px; border-radius: 50%; background: #7ad3a7; box-shadow: 0 0 0 3px rgba(122, 211, 167, 0.12); }
+.worldview.atlas-console .wv-safety {
+  margin: 0 auto 9px;
+  border: 1px solid rgba(230, 181, 116, 0.25);
+  border-left: 3px solid #dba760;
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: rgba(97, 67, 33, 0.13);
+  color: #e6d6bd;
+  font-size: 11px;
+  line-height: 1.4;
+}
+.worldview.atlas-console .wv-safety b { margin-right: 8px; color: #f2c27d; font: 600 9px/1 ui-monospace, monospace; letter-spacing: 0.12em; }
+.worldview.atlas-console .atlas-workspace-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 auto 9px;
+}
+.worldview.atlas-console .atlas-workspace-nav a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  border: 1px solid rgba(130, 173, 180, 0.23);
+  border-radius: 999px;
+  padding: 6px 10px;
+  color: #c6d6d9;
+  background: rgba(19, 36, 44, 0.78);
+  font-size: 11px;
+  text-decoration: none;
+}
+.worldview.atlas-console .atlas-workspace-nav a:hover { color: #fff; border-color: #74cfc6; background: #1a343e; }
+
+.worldview.atlas-console .wv-layout {
+  display: grid;
+  grid-template-columns: minmax(190px, 220px) minmax(0, 1fr) minmax(245px, 285px);
+  align-items: start;
+  gap: 10px;
+  max-width: 1800px;
+  margin: 0 auto;
+}
+.worldview.atlas-console .wv-left,
+.worldview.atlas-console .wv-right,
+.worldview.atlas-console .wv-stage { min-width: 0; }
+.worldview.atlas-console .wv-left,
+.worldview.atlas-console .wv-right {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  max-height: calc(100dvh - 184px);
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 1px 2px 8px 1px;
+  scrollbar-color: #38545c transparent;
+  scrollbar-width: thin;
+}
+.worldview.atlas-console .wv-left { position: sticky; top: 8px; }
+.worldview.atlas-console .wv-right { position: sticky; top: 8px; }
+.worldview.atlas-console .wv-stage {
+  position: sticky;
+  top: 8px;
+  display: grid;
+  grid-template-rows: 34px clamp(340px, 52vh, 540px) auto;
+  align-self: start;
+  gap: 0;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid rgba(119, 159, 166, 0.26);
+  border-radius: 14px;
+  background: #09151b;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.27);
+}
+.worldview.atlas-console .atlas-stage-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+  padding: 0 11px;
+  border-bottom: 1px solid rgba(119, 159, 166, 0.18);
+  background: #12232b;
+}
+.worldview.atlas-console .atlas-stage-heading strong { color: #e5eff1; font-size: 11px; }
+.worldview.atlas-console .atlas-stage-heading span { color: #91a8ae; font-size: 9px; text-align: right; }
+.worldview.atlas-console .wv-stage .globe-slot {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  height: clamp(340px, 52vh, 540px);
+  overflow: hidden;
+  border: 0;
+  border-radius: 0;
+  background: radial-gradient(ellipse at 50% 50%, #18313a, #071319 76%);
+}
+.worldview.atlas-console .wv-stage .world-globe { width: 100%; height: 100%; min-height: 0; }
+.worldview.atlas-console .wv-stage .world-globe canvas { max-width: 100%; }
+.worldview.atlas-console .stage-hud {
+  top: 10px;
+  right: 10px;
+  left: 10px;
+  display: flex;
+  justify-content: space-between;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+.worldview.atlas-console .stage-hud > span {
+  border: 1px solid rgba(167, 200, 205, 0.2);
+  border-radius: 7px;
+  padding: 5px 7px;
+  background: rgba(5, 17, 22, 0.82);
+  color: #bfd1d4;
+  font: 9px/1.2 ui-monospace, monospace;
+  backdrop-filter: blur(8px);
+}
+.worldview.atlas-console .stage-hud > span:first-child { color: #a9e3d5; }
+.worldview.atlas-console .stage-controls { right: 12px; bottom: 14px; display: grid; gap: 5px; }
+.worldview.atlas-console .stage-controls button {
+  width: 34px;
+  height: 34px;
+  border: 1px solid rgba(163, 198, 204, 0.32);
+  border-radius: 9px;
+  background: rgba(7, 22, 28, 0.9);
+  color: #eff8f7;
+  font-size: 17px;
+}
+.worldview.atlas-console .synthetic-stamp {
+  right: auto;
+  bottom: 13px;
+  left: 12px;
+  max-width: calc(100% - 70px);
+  border: 1px solid rgba(225, 183, 115, 0.25);
+  border-radius: 7px;
+  padding: 5px 7px;
+  background: rgba(7, 22, 28, 0.85);
+  color: #e6c99b;
+  font: 9px/1.3 ui-monospace, monospace;
+}
+.worldview.atlas-console .wv-stage .timeline {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+  min-width: 0;
+  padding: 7px 9px;
+  border-top: 1px solid rgba(119, 159, 166, 0.19);
+  background: #12232b;
+}
+.worldview.atlas-console .timeline .wv-label { margin-right: auto; color: #a9c0c5; font-size: 9px; }
+.worldview.atlas-console .timeline button {
+  min-height: 29px;
+  border: 1px solid rgba(130, 173, 180, 0.28);
+  border-radius: 7px;
+  padding: 5px 7px;
+  background: #1a3038;
+  color: #dbe8e9;
+  font-size: 10px;
+}
+.worldview.atlas-console .timeline button:disabled { opacity: 0.45; }
+.worldview.atlas-console .timeline input[type="range"] { min-width: 70px; flex: 1 1 90px; }
+
+.worldview.atlas-console .wv-panel,
+.worldview.atlas-console .wv-right > .atlas-workspace-disclosure {
+  min-width: 0;
+  border: 1px solid rgba(124, 159, 166, 0.21);
+  border-radius: 11px;
+  padding: 10px;
+  background: linear-gradient(145deg, rgba(19, 35, 43, 0.98), rgba(13, 27, 34, 0.98));
+  color: #d7e3e5;
+  box-shadow: 0 7px 18px rgba(0, 0, 0, 0.13);
+}
+.worldview.atlas-console .wv-label { color: #99b5ba; font-size: 9px; letter-spacing: 0.11em; }
+.worldview.atlas-console .mono { color: #9bb2b7; font-size: 10px; }
+.worldview.atlas-console .wv-panel p,
+.worldview.atlas-console .wv-panel small { overflow-wrap: anywhere; }
+.worldview.atlas-console .wv-panel button:not(.roster-row),
+.worldview.atlas-console .wv-panel select,
+.worldview.atlas-console .atlas-workspace-disclosure button {
+  max-width: 100%;
+  border-radius: 7px;
+  background: #1a343c;
+  color: #e3eff0;
+  font: 11px/1.3 system-ui, sans-serif;
+}
+.worldview.atlas-console .wv-panel button:hover:not(:disabled),
+.worldview.atlas-console .atlas-workspace-disclosure button:hover:not(:disabled) { border-color: #73d5cb; }
+.worldview.atlas-console .search-panel { padding: 10px; }
+.worldview.atlas-console .search-panel .wv-label { display: block; margin-bottom: 6px; }
+.worldview.atlas-console .search-box { border-radius: 8px; background: #09171d; }
+.worldview.atlas-console .search-box input { min-width: 0; color: #edf5f5; font-size: 11px; }
+.worldview.atlas-console .city-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 7px; }
+.worldview.atlas-console .city-chips button {
+  min-height: 25px;
+  border: 1px solid rgba(130, 173, 180, 0.2);
+  border-radius: 999px;
+  padding: 4px 7px;
+  background: rgba(16, 37, 45, 0.85);
+  color: #b8c9cc;
+  font-size: 9px;
+}
+.worldview.atlas-console .atlas-provider-trigger { width: 100%; text-align: left; }
+.worldview.atlas-console .atlas-control-disclosure { padding: 0; overflow: hidden; }
+.worldview.atlas-console .atlas-control-disclosure > summary,
+.worldview.atlas-console .atlas-workspace-disclosure > summary {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 45px;
+  padding: 10px;
+  color: #e3ecee;
+  cursor: pointer;
+  list-style-position: inside;
+}
+.worldview.atlas-console .atlas-control-disclosure > summary strong,
+.worldview.atlas-console .atlas-workspace-disclosure > summary strong { font-size: 11px; }
+.worldview.atlas-console .atlas-control-disclosure > summary small,
+.worldview.atlas-console .atlas-workspace-disclosure > summary small { color: #8fa7ad; font-size: 9px; text-align: right; }
+.worldview.atlas-console .atlas-control-disclosure[open] > summary,
+.worldview.atlas-console .atlas-workspace-disclosure[open] > summary { border-bottom: 1px solid rgba(124, 159, 166, 0.18); }
+.worldview.atlas-console .atlas-control-disclosure-content { padding: 8px 10px 10px; }
+.worldview.atlas-console .atlas-control-disclosure-content .panel-head { display: none; }
+.worldview.atlas-console .toggle-row { min-height: 34px; padding: 5px 0; border-bottom: 1px solid rgba(124, 159, 166, 0.11); color: #c9d8db; font-size: 10px; }
+.worldview.atlas-console .toggle-row small { color: #87a0a6; }
+.worldview.atlas-console .style-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; }
+.worldview.atlas-console .style-grid button { min-height: 28px; padding: 4px; font-size: 9px; }
+.worldview.atlas-console .range-row { gap: 5px; font-size: 10px; }
+.worldview.atlas-console .range-row b { font-size: 9px; }
+.worldview.atlas-console .fine-print { color: #98aeb3; font-size: 9px; line-height: 1.4; }
+.worldview.atlas-console .wv-atlas-ribbon {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 10px;
+  border: 1px solid rgba(124, 159, 166, 0.21);
+  border-radius: 11px;
+  background: linear-gradient(145deg, #13232b, #0d1b22);
+  box-shadow: none;
+}
+.worldview.atlas-console .wv-atlas-ribbon-head { display: grid; gap: 7px; margin-bottom: 8px; }
+.worldview.atlas-console .wv-atlas-eyebrow { color: #8bd8ce; font: 9px/1.2 ui-monospace, monospace; letter-spacing: 0.1em; }
+.worldview.atlas-console .wv-atlas-ribbon h2 { margin: 3px 0 0; color: #edf5f5; font-size: 13px; }
+.worldview.atlas-console .wv-atlas-ribbon h2 span { color: #9bb0b5; font-size: 10px; }
+.worldview.atlas-console .wv-atlas-view-meta { display: grid; grid-template-columns: 1fr 1fr; justify-content: start; gap: 4px 7px; color: #97adb2; font: 8px/1.3 ui-monospace, monospace; }
+.worldview.atlas-console .wv-atlas-view-meta span { min-width: 0; overflow-wrap: anywhere; }
+.worldview.atlas-console .wv-atlas-view-meta b { color: #d8e8e8; }
+.worldview.atlas-console .wv-atlas-view-meta button { grid-column: 1/-1; min-height: 29px; border-radius: 7px; padding: 5px; font-size: 10px; }
+.worldview.atlas-console .wv-atlas-layer-grid { grid-template-columns: 1fr; gap: 4px; }
+.worldview.atlas-console .wv-atlas-layer {
+  display: grid;
+  grid-template-columns: 13px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 5px;
+  min-height: 40px;
+  padding: 5px 6px;
+  border: 1px solid rgba(130, 190, 190, 0.15);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.018);
+}
+.worldview.atlas-console .wv-atlas-layer-copy { gap: 2px; }
+.worldview.atlas-console .wv-atlas-layer-copy strong { color: #dce8e8; font: 600 9px/1.2 system-ui, sans-serif; }
+.worldview.atlas-console .wv-atlas-layer-copy small { color: #98aeb3; font: 8px/1.25 system-ui, sans-serif; }
+.worldview.atlas-console .wv-atlas-state { position: static; color: #94aaaF; font-size: 7px; text-align: right; }
+.worldview.atlas-console .wv-atlas-check { width: 12px; height: 12px; margin: 0; }
+.worldview.atlas-console .wv-atlas-disclosure { margin: 8px 0 0; color: #a1b5b9; font-size: 9px; line-height: 1.4; }
+.worldview.atlas-console .wv-atlas-layer:focus-within { outline: 2px solid #ffd18e; outline-offset: 1px; }
+.worldview.atlas-console .wv-right > .atlas-workspace-disclosure { padding: 0; overflow: hidden; }
+.worldview.atlas-console .atlas-evidence-disclosure { order: -1; }
+.worldview.atlas-console .atlas-evidence-disclosure > summary { min-height: 54px; }
+.worldview.atlas-console .atlas-evidence-disclosure > summary strong { display: block; }
+.worldview.atlas-console .atlas-evidence-disclosure > summary small { max-width: 112px; }
+.worldview.atlas-console .atlas-evidence-disclosure > :not(summary) { margin: 0 9px 9px; }
+.worldview.atlas-console .atlas-workspace-disclosure .wv-panel { box-shadow: none; }
+.worldview.atlas-console .wv-right .roster { padding: 9px; }
+.worldview.atlas-console .roster-row { min-width: 0; }
+.worldview.atlas-console .roster-row strong { color: #e1ecee; }
+.worldview.atlas-console .roster-row small { color: #93a8ad; }
+.worldview.atlas-console .detail-grid { gap: 6px; }
+.worldview.atlas-console .source-note { color: #a9bdc0; overflow-wrap: anywhere; }
+.worldview.atlas-console .wv-provider-dock {
+  z-index: 40;
+  top: 86px;
+  right: 18px;
+  width: min(440px, calc(100vw - 300px));
+  max-height: calc(100dvh - 110px);
+  border: 1px solid rgba(126, 190, 185, 0.45);
+  border-radius: 13px;
+  background: rgba(8, 20, 26, 0.98);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.52);
+  backdrop-filter: blur(12px);
+}
+.worldview.atlas-console .wv-provider-dock-head { min-height: 36px; }
+.worldview.atlas-console .wv-provider-panels { overflow-x: hidden; }
+.worldview.atlas-console .atlas-history-disclosure,
+.worldview.atlas-console .atlas-command-disclosure {
+  max-width: 1800px;
+  margin: 10px auto 0;
+  border: 1px solid rgba(124, 159, 166, 0.22);
+  border-radius: 11px;
+  background: #111f26;
+}
+.worldview.atlas-console .atlas-history-disclosure > summary,
+.worldview.atlas-console .atlas-command-disclosure > summary { min-height: 48px; padding: 11px 13px; }
+.worldview.atlas-console .atlas-history-disclosure > summary strong,
+.worldview.atlas-console .atlas-command-disclosure > summary strong { color: #e9f1f2; }
+.worldview.atlas-console .atlas-history-disclosure > summary small,
+.worldview.atlas-console .atlas-command-disclosure > summary small { color: #98adb2; }
+.worldview.atlas-console .atlas-history-disclosure[open] > summary,
+.worldview.atlas-console .atlas-command-disclosure[open] > summary { border-bottom: 1px solid rgba(124, 159, 166, 0.18); }
+.worldview.atlas-console .atlas-history-disclosure .wv-time-machine { max-width: none; margin: 0; border: 0; border-radius: 0; box-shadow: none; }
+.worldview.atlas-console .atlas-command-disclosure .wv-command { max-width: none; margin: 0; border: 0; border-radius: 0; }
+.worldview.atlas-console .atlas-command-disclosure .wv-command input[aria-label="Command input"] { min-width: 120px; }
+.worldview.atlas-console .atlas-command-disclosure .command-status { flex: 1 1 100%; }
+.worldview.atlas-console .atlas-skip-link {
+  position: absolute;
+  top: -100px;
+  left: 8px;
+  z-index: 100;
+  border-radius: 6px;
+  padding: 8px 10px;
+  background: #f2f5f5;
+  color: #102128;
+}
+.worldview.atlas-console .atlas-skip-link:focus { top: 8px; }
+
+@container (min-width: 900px) {
+  .worldview.atlas-console .wv-layout {
+    display: grid;
+    grid-template-columns: minmax(190px, 220px) minmax(0, 1fr) minmax(245px, 285px);
+    gap: 10px;
+  }
+  .worldview.atlas-console .wv-stage { grid-column: auto; grid-row: auto; order: initial; }
+  .worldview.atlas-console .wv-right { grid-column: auto; grid-template-columns: 1fr; }
+}
+@container (max-width: 899px) {
+  .worldview.atlas-console { padding: 11px 12px 24px; }
+  .worldview.atlas-console .wv-layout { display: flex; flex-direction: column; gap: 10px; }
+  .worldview.atlas-console .wv-stage { position: relative; top: auto; order: -1; width: 100%; grid-template-rows: 34px clamp(340px, 52vh, 480px) auto; }
+  .worldview.atlas-console .wv-stage .globe-slot { height: clamp(340px, 52vh, 480px); min-height: 0; }
+  .worldview.atlas-console .wv-left,
+  .worldview.atlas-console .wv-right { position: static; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; max-height: none; overflow: visible; }
+  .worldview.atlas-console .wv-left > .wv-atlas-ribbon { grid-column: 1/-1; }
+  .worldview.atlas-console .wv-left > .atlas-provider-trigger { grid-column: 1/-1; }
+  .worldview.atlas-console .wv-left > .search-panel { grid-column: 1/-1; }
+  .worldview.atlas-console .wv-right > * { min-width: 0; }
+  .worldview.atlas-console .wv-right > .atlas-evidence-disclosure { grid-column: 1/-1; }
+}
+@container (max-width: 600px) {
+  .worldview.atlas-console { padding: 9px 9px 20px; }
+  .worldview.atlas-console .wv-header { display: grid; align-items: start; gap: 10px; }
+  .worldview.atlas-console .wv-header-actions { justify-content: flex-start; }
+  .worldview.atlas-console .wv-header-actions button { min-height: 32px; padding: 6px 8px; font-size: 10px; }
+  .worldview.atlas-console .wv-badge { order: -1; }
+  .worldview.atlas-console .atlas-workspace-nav { gap: 5px; }
+  .worldview.atlas-console .atlas-workspace-nav a { min-height: 32px; padding: 6px 8px; font-size: 10px; }
+  .worldview.atlas-console .wv-right,
+  .worldview.atlas-console .wv-left { grid-template-columns: minmax(0, 1fr); }
+  .worldview.atlas-console .wv-left > .search-panel,
+  .worldview.atlas-console .wv-left > .atlas-provider-trigger,
+  .worldview.atlas-console .wv-left > .wv-atlas-ribbon { grid-column: auto; }
+  .worldview.atlas-console .wv-stage { grid-template-rows: 34px 370px auto; }
+  .worldview.atlas-console .wv-stage .globe-slot { height: 370px; }
+  .worldview.atlas-console .stage-hud { right: 7px; left: 7px; }
+  .worldview.atlas-console .stage-hud > span { padding: 4px 5px; font-size: 8px; }
+  .worldview.atlas-console .atlas-stage-heading span { font-size: 8px; }
+  .worldview.atlas-console .atlas-source-status { padding: 9px; }
+  .worldview.atlas-console .atlas-source-card dl > div { grid-template-columns: 105px minmax(0, 1fr); }
+  .worldview.atlas-console .timeline .wv-label { flex: 1 1 100%; }
+}
+@media (max-width: 900px) {
+  .worldview.atlas-console .wv-provider-dock {
+    left: 10px;
+    right: 10px;
+    bottom: 10px;
+    top: auto;
+    width: auto;
+    max-height: min(72dvh, 680px);
+  }
+}
+
+
+/* Compact action disclosure keeps every existing view/import/export action reachable. */
+.worldview.atlas-console .atlas-header-menu { position: relative; z-index: 25; flex: 0 0 auto; }
+.worldview.atlas-console .atlas-header-menu > summary {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 7px;
+  cursor: pointer;
+  list-style: none;
+}
+.worldview.atlas-console .atlas-header-menu > summary::-webkit-details-marker { display: none; }
+.worldview.atlas-console .atlas-header-menu-label {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  border: 1px solid rgba(130, 173, 180, 0.28);
+  border-radius: 8px;
+  padding: 5px 9px;
+  background: #162831;
+  color: #dce9eb;
+  font-size: 10px;
+}
+.worldview.atlas-console .atlas-header-menu .wv-header-actions {
+  position: absolute;
+  top: calc(100% + 7px);
+  right: 0;
+  z-index: 30;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px;
+  width: min(340px, calc(100vw - 32px));
+  margin: 0;
+  border: 1px solid rgba(121, 183, 183, 0.35);
+  border-radius: 11px;
+  padding: 9px;
+  background: rgba(8, 20, 26, 0.98);
+  box-shadow: 0 18px 46px rgba(0, 0, 0, 0.44);
+}
+.worldview.atlas-console .atlas-header-menu[open] > summary .atlas-header-menu-label { border-color: #79ddd2; }
+
+@container (max-width: 899px) {
+  .worldview.atlas-console { display: flex; flex-direction: column; }
+  .worldview.atlas-console .wv-layout { display: contents; }
+  .worldview.atlas-console #atlas-map { order: 1; width: 100%; }
+  .worldview.atlas-console .atlas-source-status { order: 2; width: 100%; margin: 0; }
+  .worldview.atlas-console .wv-left { order: 3; width: 100%; }
+  .worldview.atlas-console .wv-right { order: 4; width: 100%; }
+  .worldview.atlas-console > .atlas-history-disclosure,
+  .worldview.atlas-console > .atlas-command-disclosure { order: 5; width: 100%; }
+  .worldview.atlas-console > .atlas-analyst-workspace { order: 6; width: 100%; }
+  .worldview.atlas-console .atlas-header-menu { justify-self: start; }
+  .worldview.atlas-console .atlas-header-menu > summary { justify-content: flex-start; }
+  .worldview.atlas-console .atlas-header-menu .wv-header-actions { position: static; width: min(340px, 100%); margin-top: 6px; }
+  .worldview.atlas-console .atlas-source-status-head { grid-template-columns: minmax(0, 1fr) auto; }
+  .worldview.atlas-console .atlas-source-card > summary small { grid-column: 2; grid-row: 2; }
+}
+@container (max-width: 600px) {
+  .worldview.atlas-console .wv-header { align-items: start; }
+  .worldview.atlas-console .wv-header h1 { font-size: 22px; }
+  .worldview.atlas-console .wv-header p { max-width: 290px; font-size: 10px; line-height: 1.25; }
+  .worldview.atlas-console .atlas-workspace-nav { gap: 4px; }
+  .worldview.atlas-console .atlas-workspace-nav a { min-height: 29px; padding: 4px 7px; font-size: 9px; }
+  .worldview.atlas-console .wv-safety { padding: 7px 8px; font-size: 9px; line-height: 1.25; }
+  .worldview.atlas-console .atlas-source-status-head { grid-template-columns: minmax(0, 1fr) auto; }
+}
+
+/* Keep the existing account/status controls intact while wrapping the mobile topbar on Atlas only. */
+@media (max-width: 350px) {
+  #root:has(.worldview.atlas-console) .app-shell > .main { overflow-x: visible; }
+  #root:has(.worldview.atlas-console) .app-shell > .main > .topbar .top-actions {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    gap: 6px 12px;
+  }
+  #root:has(.worldview.atlas-console) .app-shell > .main > .topbar .secure-status { flex: 1 0 100%; }
+  #root:has(.worldview.atlas-console) .app-shell > .main > .topbar .persona-select { margin-left: auto; }
+}
+
+
+/* Viewport media controls the Atlas root; container queries above only style its descendants. */
+@media (max-width: 900px) {
+  .worldview.atlas-console { display: flex; flex-direction: column; }
+  .worldview.atlas-console #atlas-map { order: 1; width: 100%; }
+  .worldview.atlas-console .atlas-source-status { order: 2; width: 100%; margin: 0; }
+  .worldview.atlas-console .wv-left { order: 3; width: 100%; }
+  .worldview.atlas-console .wv-right { order: 4; width: 100%; }
+  .worldview.atlas-console > .atlas-history-disclosure,
+  .worldview.atlas-console > .atlas-command-disclosure { order: 5; width: 100%; }
+  .worldview.atlas-console > .atlas-analyst-workspace { order: 6; width: 100%; }
+}
+
+
+.worldview.atlas-console .atlas-source-card > summary {
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: auto auto;
+}
+.worldview.atlas-console .atlas-source-card > summary strong { grid-column: 1; grid-row: 1; }
+.worldview.atlas-console .atlas-source-card > summary .atlas-source-state { grid-column: 2; grid-row: 1; }
+.worldview.atlas-console .atlas-source-card > summary .atlas-source-kind { grid-column: 1; grid-row: 2; }
+.worldview.atlas-console .atlas-source-card > summary small { grid-column: 2; grid-row: 2; text-align: right; }
+
+
+/* WorldGlobe owns a 480px minimum host; keep the stage slot equally tall so it cannot clip the renderer. */
+@container (max-width: 899px) {
+  .worldview.atlas-console .wv-stage { grid-template-rows: 34px 480px auto; }
+  .worldview.atlas-console .wv-stage .globe-slot { height: 480px; }
+}
+@container (max-width: 600px) {
+  .worldview.atlas-console .wv-stage { grid-template-rows: 34px 480px auto; }
+  .worldview.atlas-console .wv-stage .globe-slot { height: 480px; }
+}

@@ -1,0 +1,93 @@
+.worldview .atlas-source-status {
+  margin: 0 auto 12px;
+  max-width: 1800px;
+  padding: 11px 13px;
+  border: 1px solid rgba(121, 183, 183, 0.24);
+  border-radius: 12px;
+  background: linear-gradient(115deg, rgba(17, 32, 40, 0.97), rgba(12, 24, 31, 0.95));
+  color: #e5eef0;
+  font: 12px/1.45 system-ui, sans-serif;
+}
+.worldview .atlas-source-status-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+.worldview .atlas-status-kicker {
+  display: block;
+  margin-bottom: 3px;
+  color: #89d8cf;
+  font: 10px/1.2 ui-monospace, SFMono-Regular, monospace;
+  letter-spacing: 0.11em;
+}
+.worldview .atlas-source-status-head strong { display: block; color: #f0f5f6; font-size: 13px; }
+.worldview .atlas-source-status-head p { margin: 2px 0 0; color: #9cafb5; font-size: 11px; }
+.worldview .atlas-source-mode { display: grid; justify-items: end; gap: 3px; text-align: right; }
+.worldview .atlas-source-mode small { color: #91a7ae; font-size: 10px; }
+.worldview .atlas-core-feed-state,
+.worldview .atlas-source-state,
+.worldview .atlas-source-kind {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  border: 1px solid rgba(137, 158, 165, 0.3);
+  border-radius: 999px;
+  padding: 3px 8px;
+  background: rgba(141, 159, 165, 0.11);
+  color: #cfdbde;
+  font: 10px/1.25 ui-monospace, SFMono-Regular, monospace;
+}
+.worldview .atlas-core-feed-state.off { border-color: rgba(116, 198, 174, 0.35); color: #b5e6d5; background: rgba(64, 133, 109, 0.13); }
+.worldview .atlas-core-feed-state.enabled { border-color: rgba(255, 203, 126, 0.52); color: #ffd796; background: rgba(174, 124, 48, 0.15); }
+.worldview .atlas-source-cards { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 8px; }
+.worldview .atlas-source-card,
+.worldview .atlas-source-more {
+  flex: 1 1 225px;
+  min-width: min(220px, 100%);
+  border: 1px solid rgba(117, 153, 161, 0.22);
+  border-radius: 9px;
+  background: rgba(4, 13, 18, 0.42);
+}
+.worldview .atlas-source-card > summary,
+.worldview .atlas-source-more > summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 5px 8px;
+  min-height: 42px;
+  padding: 7px 9px;
+  color: #dce8ea;
+  cursor: pointer;
+  list-style-position: inside;
+}
+.worldview .atlas-source-card > summary strong { min-width: 0; overflow-wrap: anywhere; font-size: 11px; }
+.worldview .atlas-source-card > summary small { grid-column: 1/-1; color: #90a8ae; font-size: 10px; }
+.worldview .atlas-source-card > summary .atlas-source-state { grid-column: 2; grid-row: 1; }
+.worldview .atlas-source-card > summary .atlas-source-kind { grid-column: 1; grid-row: 2; }
+.worldview .atlas-source-state.fresh { color: #b8edd8; border-color: rgba(99, 198, 151, 0.45); }
+.worldview .atlas-source-state.cached { color: #c6e0ff; border-color: rgba(106, 161, 214, 0.45); }
+.worldview .atlas-source-state.stale,
+.worldview .atlas-source-state.failed { color: #ffd38c; border-color: rgba(238, 173, 81, 0.55); }
+.worldview .atlas-source-state.unknown,
+.worldview .atlas-source-state.mixed { color: #d0dbe0; border-color: rgba(157, 178, 186, 0.4); }
+.worldview .atlas-source-state.synthetic { color: #e4c5ff; border-color: rgba(176, 132, 224, 0.5); }
+.worldview .atlas-source-card dl { display: grid; gap: 5px; margin: 0; padding: 8px 10px 10px; border-top: 1px solid rgba(117, 153, 161, 0.2); }
+.worldview .atlas-source-card dl > div { display: grid; grid-template-columns: 115px minmax(0, 1fr); gap: 8px; }
+.worldview .atlas-source-card dt { color: #92a9af; font-size: 10px; }
+.worldview .atlas-source-card dd { min-width: 0; margin: 0; color: #d1dee1; font-size: 10px; overflow-wrap: anywhere; }
+.worldview .atlas-source-card a { color: #91e3d8; }
+.worldview .atlas-source-more { flex: 0 1 auto; min-width: 170px; }
+.worldview .atlas-source-more > summary { display: block; color: #b5c6ca; font-size: 10px; }
+.worldview .atlas-source-more[open] { flex: 1 1 100%; }
+.worldview .atlas-source-more .atlas-source-card { margin: 0 7px 7px; }
+.worldview .atlas-source-empty { margin: 8px 0 0; color: #c4d0d4; font-size: 11px; }
+.worldview .atlas-source-mode-note { margin: 7px 0 0; color: #ffd48f; font-size: 10px; }
+.worldview .atlas-source-status summary:focus-visible { outline: 2px solid #7fe1d3; outline-offset: 2px; border-radius: 7px; }
+
+@media (max-width: 700px) {
+  .worldview .atlas-source-status-head { align-items: flex-start; flex-direction: column; }
+  .worldview .atlas-source-mode { justify-items: start; text-align: left; }
+  .worldview .atlas-source-card,
+  .worldview .atlas-source-more { flex-basis: 100%; min-width: 0; }
+}
