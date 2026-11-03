@@ -10,6 +10,7 @@ import {
   type IncidentGraphEdge,
   type IncidentGraphNode,
 } from "./worldview-event-graph";
+import { WorldViewClosureDurationScenario } from "./WorldViewClosureDurationScenario";
 import "./worldview-event-graph.css";
 
 type Props = {
@@ -146,44 +147,62 @@ export function WorldViewIncidentGraph({
     maxTimeDeltaHours,
   }), [observations, focusRecord, providerResults, sourceSummaries, maxDistanceKm, maxTimeDeltaHours]);
   const nodeMap = useMemo(() => new Map(graph.nodes.map((node) => [node.nodeId, node])), [graph.nodes]);
+  const [showSyntheticScenarioExample, setShowSyntheticScenarioExample] = useState(false);
+  const hasClosureFocus = graph.status === "ready" && graph.focusRole === "road-closure" && Boolean(focusRecord);
 
   return (
-    <section className="wv-panel wv-event-graph" aria-label="Loaded evidence graph">
-      <div className="panel-head">
-        <span className="wv-label">CROSS-LAYER EVIDENCE GRAPH</span>
-        <span className="mono">LOADED RECORDS ONLY</span>
-      </div>
-      <p className="wv-event-graph-disclosure">Associations around the selected record. This is an evidence view, not a confirmed incident. No causation, identity, provider agreement, or completeness is inferred.</p>
-      {historical && <p className="wv-event-graph-mode" role="note">Historical captured records · not current</p>}
-      {syntheticReplay && <p className="wv-event-graph-mode" role="note">Synthetic replay records · not provider evidence</p>}
-      <div className="wv-event-graph-controls">
-        <label>Association distance
-          <select aria-label="Association distance window" value={String(maxDistanceKm)} onChange={(event) => setMaxDistanceKm(Number(event.target.value))}>
-            <option value="5">5 km</option><option value="25">25 km</option><option value="100">100 km</option>
-          </select>
-        </label>
-        <label>Source-time difference
-          <select aria-label="Association time window" value={String(maxTimeDeltaHours)} onChange={(event) => setMaxTimeDeltaHours(Number(event.target.value))}>
-            <option value="1">1 hour</option><option value="6">6 hours</option><option value="24">24 hours</option><option value="72">72 hours</option>
-          </select>
-        </label>
-      </div>
-      {graph.status !== "ready" ? (
-        <p className="wv-event-graph-empty">{graph.coverageGaps[0]}</p>
-      ) : (
-        <>
-          <div className="wv-event-graph-summary">
-            <strong>Anchor: {focusRecord ? `${text(focusRecord.source)} · ${text(focusRecord.layer)} · ${text(focusRecord.id)}` : "Unknown"}</strong>
-            <span>{graph.nodes.length} loaded record{graph.nodes.length === 1 ? "" : "s"} · {graph.edges.length} link{graph.edges.length === 1 ? "" : "s"}</span>
-            <small>Heuristic window: ≤{graph.maxDistanceKm} km and ≤{graph.maxTimeDeltaHours} h from the anchor. Exact data matches and unresolved conflicts are separate link types.</small>
-          </div>
-          {graph.edges.length === 0 && <p className="wv-event-graph-empty">No exact match, possible conflict, or in-window spatial-temporal association was identified among these loaded records. This does not establish agreement or absence.</p>}
-          {graph.edges.length > 0 && <div className="wv-event-graph-edge-list">{graph.edges.map((edge) => <EdgeCard key={edge.edgeId} edge={edge} nodes={nodeMap} onInspect={onInspectRecord} />)}</div>}
-          <div className="wv-event-graph-node-list"><h3>Included source records</h3>{graph.nodes.map((node) => <NodeCard key={node.nodeId} node={node} onInspect={onInspectRecord} />)}</div>
-          {graph.coverageGaps.length > 0 && <details className="wv-event-graph-gaps"><summary>Coverage and uncertainty notes ({graph.coverageGaps.length})</summary><ul>{graph.coverageGaps.map((gap, index) => <li key={`${index}-${gap}`}>{text(gap)}</li>)}</ul></details>}
-        </>
+    <>
+      <section className="wv-panel wv-event-graph" aria-label="Loaded evidence graph">
+        <div className="panel-head">
+          <span className="wv-label">CROSS-LAYER EVIDENCE GRAPH</span>
+          <span className="mono">LOADED RECORDS ONLY</span>
+        </div>
+        <p className="wv-event-graph-disclosure">Associations around the selected record. This is an evidence view, not a confirmed incident. No causation, identity, provider agreement, or completeness is inferred.</p>
+        {historical && <p className="wv-event-graph-mode" role="note">Historical captured records · not current</p>}
+        {syntheticReplay && <p className="wv-event-graph-mode" role="note">Synthetic replay records · not provider evidence</p>}
+        <div className="wv-event-graph-controls">
+          <label>Association distance
+            <select aria-label="Association distance window" value={String(maxDistanceKm)} onChange={(event) => setMaxDistanceKm(Number(event.target.value))}>
+              <option value="5">5 km</option><option value="25">25 km</option><option value="100">100 km</option>
+            </select>
+          </label>
+          <label>Source-time difference
+            <select aria-label="Association time window" value={String(maxTimeDeltaHours)} onChange={(event) => setMaxTimeDeltaHours(Number(event.target.value))}>
+              <option value="1">1 hour</option><option value="6">6 hours</option><option value="24">24 hours</option><option value="72">72 hours</option>
+            </select>
+          </label>
+        </div>
+        {graph.status !== "ready" ? (
+          <p className="wv-event-graph-empty">{graph.coverageGaps[0]}</p>
+        ) : (
+          <>
+            <div className="wv-event-graph-summary">
+              <strong>Anchor: {focusRecord ? `${text(focusRecord.source)} · ${text(focusRecord.layer)} · ${text(focusRecord.id)}` : "Unknown"}</strong>
+              <span>{graph.nodes.length} loaded record{graph.nodes.length === 1 ? "" : "s"} · {graph.edges.length} link{graph.edges.length === 1 ? "" : "s"}</span>
+              <small>Heuristic window: ≤{graph.maxDistanceKm} km and ≤{graph.maxTimeDeltaHours} h from the anchor. Exact data matches and unresolved conflicts are separate link types.</small>
+            </div>
+            {graph.edges.length === 0 && <p className="wv-event-graph-empty">No exact match, possible conflict, or in-window spatial-temporal association was identified among these loaded records. This does not establish agreement or absence.</p>}
+            {graph.edges.length > 0 && <div className="wv-event-graph-edge-list">{graph.edges.map((edge) => <EdgeCard key={edge.edgeId} edge={edge} nodes={nodeMap} onInspect={onInspectRecord} />)}</div>}
+            <div className="wv-event-graph-node-list"><h3>Included source records</h3>{graph.nodes.map((node) => <NodeCard key={node.nodeId} node={node} onInspect={onInspectRecord} />)}</div>
+            {graph.coverageGaps.length > 0 && <details className="wv-event-graph-gaps"><summary>Coverage and uncertainty notes ({graph.coverageGaps.length})</summary><ul>{graph.coverageGaps.map((gap, index) => <li key={`${index}-${gap}`}>{text(gap)}</li>)}</ul></details>}
+          </>
+        )}
+        <p className="wv-event-graph-footer">No provider refresh, background request, consent change, or command generation is performed by this graph.</p>
+        {!hasClosureFocus && !showSyntheticScenarioExample && <button type="button" className="wv-event-graph-synthetic-example" onClick={() => setShowSyntheticScenarioExample(true)}>Try a labeled synthetic closure-duration example</button>}
+      </section>
+      {(hasClosureFocus || showSyntheticScenarioExample) && (
+        <WorldViewClosureDurationScenario
+          observations={observations}
+          focusRecord={focusRecord}
+          incidentGraph={graph}
+          providerResults={providerResults}
+          sourceSummaries={sourceSummaries}
+          historical={historical}
+          syntheticReplay={syntheticReplay}
+          initialSyntheticExample={!hasClosureFocus}
+          onCloseSyntheticExample={() => setShowSyntheticScenarioExample(false)}
+        />
       )}
-      <p className="wv-event-graph-footer">No provider refresh, background request, consent change, or command generation is performed by this graph.</p>
-    </section>
+    </>
   );
 }
