@@ -45,6 +45,10 @@ const graph = buildIncidentGraph({ observations: [closure, camera], focusRecord:
 const markup = renderToStaticMarkup(createElement(WorldViewIncidentGraph, {
   observations: [closure, camera], focusRecord: closure, providerResults: [], sourceSummaries: [],
 }));
+const unsupportedFocus = { ...camera, layer: "ais", properties: {} };
+const unsupportedMarkup = renderToStaticMarkup(createElement(WorldViewIncidentGraph, {
+  observations: [unsupportedFocus], focusRecord: unsupportedFocus, providerResults: [], sourceSummaries: [],
+}));
 
 test("graph UI exposes evidence metadata, underlying records, and edge rationale", () => {
   assert.match(markup, /CROSS-LAYER EVIDENCE GRAPH/);
@@ -71,4 +75,9 @@ test("graph UI exposes adjustable distance and time windows and performs no prov
   assert.match(markup, /No provider refresh, background request, consent change, or command generation/);
   const panel = await readFile(resolve(root, "src/WorldViewIncidentGraph.tsx"), "utf8");
   assert.doesNotMatch(panel, /\bfetch\s*\(|XMLHttpRequest|WebSocket|setInterval/);
+});
+
+test("synthetic example launcher remains available without a loaded closure", () => {
+  assert.match(unsupportedMarkup, /Try a labeled synthetic closure-duration example/);
+  assert.doesNotMatch(unsupportedMarkup, /data-view-kind="scenario-only"/);
 });

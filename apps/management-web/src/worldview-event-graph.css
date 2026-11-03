@@ -48,8 +48,52 @@
 .worldview .wv-event-graph-gaps { margin: 8px 0; }
 .worldview .wv-event-graph-gaps ul { padding-left: 18px; }
 .worldview .wv-event-graph-gaps li { margin: 5px 0; }
+.worldview .wv-event-graph-synthetic-example { margin-top: 8px; border: 1px dashed rgba(195, 163, 235, .7); color: #dfc7ff; }
 @media (max-width: 420px) {
   .worldview .wv-event-graph-controls { grid-template-columns: 1fr; }
   .worldview .wv-event-graph-meta > div,
   .worldview .wv-event-graph-inspection dl > div { grid-template-columns: 1fr; }
+}
+
+.worldview .wv-closure-scenario { min-width: 0; border: 1px solid rgba(181, 145, 227, .55); border-left: 4px solid #b99be1; background: linear-gradient(145deg, rgba(42, 28, 59, .42), rgba(5, 18, 23, .82)); }
+.worldview .wv-closure-scenario > p { margin: 0 0 9px; }
+.worldview .wv-closure-scenario-badge { padding: 3px 6px; border: 1px solid rgba(195, 163, 235, .62); color: #dfc7ff; font-size: 9px; letter-spacing: .08em; }
+.worldview .wv-closure-scenario-disclosure,
+.worldview .wv-closure-scenario-mode,
+.worldview .wv-closure-scenario-empty,
+.worldview .wv-closure-scenario-footer { color: #c2b3d6; font-size: 11px; line-height: 1.5; }
+.worldview .wv-closure-scenario-mode { color: #f0d89b; }
+.worldview .wv-closure-scenario-mode.is-synthetic { color: #e0c2ff; }
+.worldview .wv-closure-scenario-dataset-controls { display: flex; flex-wrap: wrap; gap: 7px; margin: 8px 0; }
+.worldview .wv-closure-scenario-dataset-controls button { border: 1px dashed rgba(195, 163, 235, .62); color: #e0c2ff; }
+.worldview .wv-closure-scenario-controls { display: grid; grid-template-columns: minmax(0, 1fr) minmax(90px, 150px); align-items: center; gap: 8px; margin: 10px 0; color: #dcccf0; font-size: 11px; }
+.worldview .wv-closure-scenario-controls input { width: 100%; min-width: 0; }
+.worldview .wv-closure-scenario-inputs,
+.worldview .wv-closure-scenario-group { margin: 9px 0; border-top: 1px solid rgba(181, 145, 227, .24); padding-top: 8px; }
+.worldview .wv-closure-scenario-inputs summary,
+.worldview .wv-closure-scenario-group summary { color: #d6bdf7; cursor: pointer; font-size: 11px; }
+.worldview .wv-closure-scenario-inputs dl,
+.worldview .wv-closure-scenario-record dl { display: grid; gap: 5px; margin: 8px 0; }
+.worldview .wv-closure-scenario-inputs dl > div,
+.worldview .wv-closure-scenario-record dl > div { display: grid; grid-template-columns: minmax(112px, .8fr) minmax(0, 1.5fr); gap: 6px; }
+.worldview .wv-closure-scenario-inputs dt,
+.worldview .wv-closure-scenario-record dt { color: #aa96c4; }
+.worldview .wv-closure-scenario-inputs dd,
+.worldview .wv-closure-scenario-record dd { margin: 0; color: #e0d7eb; overflow-wrap: anywhere; }
+.worldview .wv-closure-scenario-inputs ul { margin: 7px 0; padding-left: 18px; color: #bdafcf; font-size: 10px; line-height: 1.45; }
+.worldview .wv-closure-scenario-inputs li { margin: 4px 0; }
+.worldview .wv-closure-scenario-summary { display: grid; gap: 5px; margin: 10px 0; padding: 9px; border: 1px dashed rgba(195, 163, 235, .55); background: rgba(42, 28, 59, .32); font-size: 11px; overflow-wrap: anywhere; }
+.worldview .wv-closure-scenario-summary span,
+.worldview .wv-closure-scenario-summary small { color: #ccb9e2; }
+.worldview .wv-closure-scenario-record-list { display: grid; gap: 7px; margin: 8px 0; }
+.worldview .wv-closure-scenario-record { min-width: 0; padding: 8px; border: 1px dashed rgba(181, 145, 227, .45); background: rgba(24, 15, 35, .42); font-size: 10px; overflow-wrap: anywhere; }
+.worldview .wv-closure-scenario-record-head { display: grid; gap: 4px; }
+.worldview .wv-closure-scenario-record-head span { color: #d5b5fa; font-size: 9px; letter-spacing: .06em; }
+.worldview .wv-closure-scenario-record-head strong { color: #eee4fa; }
+.worldview .wv-closure-scenario-provenance { margin: 5px 0; color: #c7b7d9; line-height: 1.4; }
+.worldview .wv-closure-scenario-footer { margin-top: 10px !important; border-top: 1px solid rgba(181, 145, 227, .24); padding-top: 8px; }
+@media (max-width: 420px) {
+  .worldview .wv-closure-scenario-controls { grid-template-columns: 1fr; }
+  .worldview .wv-closure-scenario-inputs dl > div,
+  .worldview .wv-closure-scenario-record dl > div { grid-template-columns: 1fr; }
 }
